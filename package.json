@@ -1,0 +1,23 @@
+{
+  "name": "dagdb",
+  "version": "0.0.0",
+  "description": "Syncable large scale database built on IPLD",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikeal/dagdb.git"
+  },
+  "keywords": [],
+  "author": "Mikeal Rogers <mikeal.rogers@gmail.com> (https://www.mikealrogers.com/)",
+  "license": "(Apache-2.0 AND MIT)",
+  "bugs": {
+    "url": "https://github.com/mikeal/dagdb/issues"
+  },
+  "homepage": "https://github.com/mikeal/dagdb#readme",
+  "dependencies": {
+    "@ipld/block": "^2.1.3"
+  }
+}
