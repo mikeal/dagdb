@@ -1,5 +1,5 @@
 
-module.exports = Block => {
+module.exports = (Block, codec='dag-cbor') => {
   const commitKeyValueTransaction = async function * (_ops, root, get) {
     const rootBlock = await get(root)
     const kvt = types.KeyValueTransaction.decoder(rootBlock)
@@ -39,8 +39,8 @@ module.exports = Block => {
     }
     async set (key, block) {
       // TODO: move this a queue/batch for perf
-      if (!isBlock(block)) block = Block.encoder(value)
-      const trans = new KeyValueTransaction()
+      if (!isBlock(block)) block = Block.encoder(block, codec)
+      const trans = new Transaction()
       trans.set(key, block)
       const promises = []
       let last
@@ -59,11 +59,11 @@ module.exports = Block => {
       return value
     }
     commit (trans) {
-      return commitKeyValueTransaction(trans.ops, this.root, this.store.get)
+      return commitKeyValueTransaction(trans.ops, this.root, this.store.get.bind(this.store))
     }
   }
 
-  const empty = Block.encoder({type: 'kv-v1', db: {}})
+  const empty = Block.encoder({type: 'kv-v1', db: {}}, codec)
 
   const exports = (...args) => new KeyValueDatabase(...args)
   exports.create = async store =>  {

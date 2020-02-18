@@ -3,6 +3,7 @@ class InMemory {
     this.storage = new Map()
   }
   async put (block) {
+    console.log({put: this})
     const cid = await block.cid()
     this.storage.set(cid.toString('base64'), block)
   }
