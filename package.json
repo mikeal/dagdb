@@ -4,7 +4,7 @@
   "description": "Syncable large scale database built on IPLD",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "ipld-schema to-json Schema.md > src/schema.json"
   },
   "repository": {
     "type": "git",
@@ -18,7 +18,9 @@
   },
   "homepage": "https://github.com/mikeal/dagdb#readme",
   "dependencies": {
-    "@ipld/block": "^2.1.3"
+    "@ipld/block": "^2.1.3",
+    "@ipld/schema-gen": "^0.1.0",
+    "ipld-schema": "^0.3.2"
   },
   "devDependencies": {
     "mocha": "^7.0.1",

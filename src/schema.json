@@ -1,0 +1,73 @@
+{
+  "types": {
+    "DeleteOperation": {
+      "kind": "struct",
+      "fields": {
+        "key": {
+          "type": "String"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "SetOperation": {
+      "kind": "struct",
+      "fields": {
+        "value": {
+          "type": "Link"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Operation": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "set": "SetOperation",
+          "del": "DeleteOperation"
+        }
+      }
+    },
+    "OpList": {
+      "kind": "list",
+      "valueType": {
+        "kind": "link",
+        "expectedType": "Operation"
+      }
+    },
+    "HAMT": {
+      "kind": "map",
+      "keyType": "String",
+      "valueType": "Link"
+    },
+    "TransactionV1": {
+      "kind": "struct",
+      "fields": {
+        "head": {
+          "type": "HAMT"
+        },
+        "ops": {
+          "type": "OpList"
+        },
+        "prev": {
+          "type": "Transaction",
+          "nullable": true
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Transaction": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "v1": "TransactionV1"
+        }
+      }
+    }
+  }
+}
