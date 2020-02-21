@@ -14,7 +14,10 @@
     "SetOperation": {
       "kind": "struct",
       "fields": {
-        "value": {
+        "key": {
+          "type": "String"
+        },
+        "val": {
           "type": "Link"
         }
       },
@@ -53,7 +56,10 @@
           "type": "OpList"
         },
         "prev": {
-          "type": "Transaction",
+          "type": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          },
           "nullable": true
         }
       },

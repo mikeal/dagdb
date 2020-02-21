@@ -1,3 +1,6 @@
+const validate = require('./ipld-schema')(require('./schema.json'))
+const fromBlock = (block, className) => validate(block.decode(), className)
+
 const noResolver = () => {
   throw new Error('Operation conflict and no resolver has been provided')
 }
@@ -11,14 +14,15 @@ const sanitize = obj => {
 }
 
 module.exports = (Block, codec = 'dag-cbor') => {
-  const types = require('./types')(Block, codec)
+  const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
+
   const commitKeyValueTransaction = async function * (_ops, root, get, conflictResolver = noResolver) {
     const rootBlock = await get(root)
-    const kvt = types.Transaction.fromBlock(rootBlock)
+    const kvt = validate(rootBlock.decode(), 'Transaction')
     const blocks = (await Promise.all(_ops.map(async o => {
-      if (o.val) o.val = await o.val
+      if (o.set) o.set.val = await o.set.val
       return o
-    }))).map(op => types.Operation.toBlock(op, codec))
+    }))).map(op => toBlock(op, 'Operation'))
     const seen = new Set()
     const keyMap = new Map()
     // hash in parallel
@@ -41,13 +45,14 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
     }
 
-    const head = kvt.get('v1/head')
+    // TODO: replace with a full HAMT
+    const head = kvt.v1.head
 
     for (const block of keyMap.values()) {
       yield block
       const op = block.decodeUnsafe()
       if (op.set) {
-        head[op.set.key] = op.set.value
+        head[op.set.key] = op.set.val
       } else if (op.del) {
         delete head[op.del.key]
       } else {
@@ -55,7 +60,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
     }
     const ops = await Promise.all(Array.from(keyMap.values()).map(block => block.cid()))
-    yield types.Transaction.toBlock({ v1: { head, ops, prev: await rootBlock.cid() } })
+    yield toBlock({ v1: { head, ops, prev: await rootBlock.cid() } }, 'Transaction')
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -79,7 +84,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     constructor (root, store) {
       this.root = root
       this.rootTransaction = store.get(root).then(block => {
-        return types.Transaction.fromBlock(block)
+        return fromBlock(block, 'Transaction')
       })
       this.store = store
       this.cache = {}
@@ -88,6 +93,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async set (key, block) {
       // TODO: move this a queue/batch for perf
       if (!isBlock(block)) block = Block.encoder(block, codec)
+      await this.store.put(block)
       // TODO: check if new key/block are identical to old value
       const trans = new Transaction()
       trans.set(key, block)
@@ -102,7 +108,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async get (key) {
-      const head = (await this.rootTransaction).get('v1/head')
+      // TODO: replace with HAMT
+      const root = await this.store.get(this.root)
+      const head = root.decode().v1.head
+      if (!head[key]) throw new Error(`No key named ${key}`)
+      const block = await this.store.get(head[key])
       const value = block.decode()
       return value
     }
@@ -112,7 +122,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
   }
 
-  const empty = Block.encoder({ v1: { head: {}, ops: [], prev: null } }, codec)
+  const empty = toBlock({ v1: { head: {}, ops: [], prev: null } }, 'Transaction')
 
   const exports = (...args) => new KeyValueDatabase(...args)
   exports.create = async store => {

@@ -3,13 +3,14 @@ class InMemory {
     this.storage = new Map()
   }
   async put (block) {
-    console.log({put: this})
     const cid = await block.cid()
     this.storage.set(cid.toString('base64'), block)
   }
   async get (cid) {
     const key = cid.toString('base64')
-    return this.storage.get(key)
+    const value = this.storage.get(key)
+    if (!value) throw new Error(`Do not have ${key} in store`)
+    return value
   }
 }
 

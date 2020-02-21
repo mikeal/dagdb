@@ -6,7 +6,7 @@ type DeleteOperation struct {
 }
 type SetOperation struct {
   key String
-  value Link
+  val Link
 }
 type Operation union {
   | SetOperation "set"
@@ -18,7 +18,7 @@ type HAMT {String:Link}
 type TransactionV1 struct {
   head HAMT
   ops OpList
-  prev nullable Transaction
+  prev nullable &Transaction
 }
 type Transaction union {
   | TransactionV1 "v1"
