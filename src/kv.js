@@ -5,14 +5,6 @@ const noResolver = () => {
   throw new Error('Operation conflict and no resolver has been provided')
 }
 
-const sanitize = obj => {
-  const ret = {}
-  for (const key of obj) {
-    if (!key.startsWith('_')) ret[key] = obj[key]
-  }
-  return ret
-}
-
 module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
@@ -87,38 +79,68 @@ module.exports = (Block, codec = 'dag-cbor') => {
         return fromBlock(block, 'Transaction')
       })
       this.store = store
-      this.cache = {}
+      this.cache = { set: {}, del: new Set(), pending: [] }
     }
 
-    async set (key, block) {
+    clear () {
+      this.cache = { set: {}, del: new Set(), pending: [] }
+    }
+
+    set (key, block) {
       // TODO: move this a queue/batch for perf
       if (!isBlock(block)) block = Block.encoder(block, codec)
-      await this.store.put(block)
-      // TODO: check if new key/block are identical to old value
+      if (this.cache.del.has(key)) this.del.remove(key)
+      this.cache.set[key] = block
+      this.cache.pending.push(this.store.put(block))
+    }
+
+    del (key) {
+      if (this.cache.set[key]) delete this.cache.set[key]
+      this.cache.del.add(key)
+    }
+
+    async commit () {
       const trans = new Transaction()
-      trans.set(key, block)
+      for (const [key, block] of Object.entries(this.cache.set)) {
+        trans.set(key, block)
+      }
+      for (const key of this.cache.del) {
+        trans.del(key)
+      }
+      const root = this.root
+      const _commit = commitKeyValueTransaction(trans.ops, root, this.store.get.bind(this.store))
       const promises = []
       let last
-      for await (const block of this.commit(trans)) {
+      for await (const block of _commit) {
         last = block
         promises.push(this.store.put(block))
       }
-      await Promise.all(promises)
-      this.root = await last.cid()
+      await Promise.all([...this.cache.pending, ...promises])
+      const cid = await last.cid()
+      if (this.root !== root) {
+        throw new Error('Cannot concurrently commit transactions')
+      }
+      this.root = cid
+    }
+
+    _get (key) {
+      // Check cache
+      if (this.cache.set[key]) return this.cache.set[key].decode()
+      if (this.cache.del.has(key)) throw new Error(`No key named ${key}`)
     }
 
     async get (key) {
+      if (this._get(key)) return this._get(key)
       // TODO: replace with HAMT
       const root = await this.store.get(this.root)
       const head = root.decode().v1.head
       if (!head[key]) throw new Error(`No key named ${key}`)
       const block = await this.store.get(head[key])
-      const value = block.decode()
-      return value
-    }
 
-    commit (trans) {
-      return commitKeyValueTransaction(trans.ops, this.root, this.store.get.bind(this.store))
+      // one last cache check since there was async work
+      if (this._get(key)) return this._get(key)
+
+      return block.decode()
     }
   }
 
