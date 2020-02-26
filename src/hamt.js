@@ -22,7 +22,8 @@ const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor')
   }
   const load = cid => get(cid).then(block => block.decode())
   const isEqual = (one, two) => one.equals(two)
-  let map = await iamap.create({ save, load, isEqual, isLink: isCID}, config)
+
+  let map = await iamap.load({ save, load, isEqual, isLink: isCID}, head)
   for (const op of ops) {
     if (op.set) {
       map = await map.set(op.set.key, op.set.val)
