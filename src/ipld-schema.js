@@ -1,7 +1,6 @@
 const types = {}
 const strf = obj => JSON.stringify(obj)
-const cidSymbol = Symbol.for('@ipld/js-cid/CID')
-const isCID = node => !!(node && node[cidSymbol])
+const isCID = require('./is-cid')
 
 const validateField = (api, key, schema, value) => {
   if (typeof value === 'undefined') {

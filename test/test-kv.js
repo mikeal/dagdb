@@ -13,4 +13,3 @@ test('basic set/get', async () => {
   const obj = await kvs.get('test')
   same(obj, { hello: 'world' })
 })
-

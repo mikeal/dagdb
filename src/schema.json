@@ -1,5 +1,89 @@
 {
   "types": {
+    "HashMapData": {
+      "kind": "list",
+      "valueType": "Element"
+    },
+    "HashMapRoot": {
+      "kind": "struct",
+      "fields": {
+        "hashAlg": {
+          "type": "String"
+        },
+        "bucketSize": {
+          "type": "Int"
+        },
+        "map": {
+          "type": "Bytes"
+        },
+        "data": {
+          "type": "HashMapData"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "HashMapNode": {
+      "kind": "struct",
+      "fields": {
+        "map": {
+          "type": "Bytes"
+        },
+        "data": {
+          "type": "HashMapData"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Element": {
+      "kind": "union",
+      "representation": {
+        "kinded": {
+          "map": "HashMapNode",
+          "link": {
+            "kind": "link",
+            "expectedType": "HashMapNode"
+          },
+          "list": "Bucket"
+        }
+      }
+    },
+    "Bucket": {
+      "kind": "list",
+      "valueType": "BucketEntry"
+    },
+    "BucketEntry": {
+      "kind": "struct",
+      "fields": {
+        "key": {
+          "type": "Bytes"
+        },
+        "value": {
+          "type": "Value"
+        }
+      },
+      "representation": {
+        "tuple": {}
+      }
+    },
+    "Value": {
+      "kind": "union",
+      "representation": {
+        "kinded": {
+          "bool": "Bool",
+          "string": "String",
+          "bytes": "Bytes",
+          "int": "Int",
+          "float": "Float",
+          "map": "Map",
+          "list": "List",
+          "link": "Link"
+        }
+      }
+    },
     "DeleteOperation": {
       "kind": "struct",
       "fields": {
@@ -41,16 +125,14 @@
         "expectedType": "Operation"
       }
     },
-    "HAMT": {
-      "kind": "map",
-      "keyType": "String",
-      "valueType": "Link"
-    },
     "TransactionV1": {
       "kind": "struct",
       "fields": {
         "head": {
-          "type": "HAMT"
+          "type": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
         },
         "ops": {
           "type": "OpList"

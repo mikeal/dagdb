@@ -1,3 +1,45 @@
+# [HAMT](https://github.com/ipld/specs/blob/master/data-structures/hashmap.md)
+
+```sh
+type HashMapData [Element]
+type HashMapRoot struct {
+  hashAlg String
+  bucketSize Int
+  map Bytes
+  data HashMapData
+}
+
+# Non-root node layout
+type HashMapNode struct {
+  map Bytes
+  data HashMapData
+}
+
+type Element union {
+  | HashMapNode map
+  | &HashMapNode link
+  | Bucket list
+} representation kinded
+
+type Bucket [ BucketEntry ]
+
+type BucketEntry struct {
+  key Bytes
+  value Value
+} representation tuple
+
+type Value union {
+  | Bool bool
+  | String string
+  | Bytes bytes
+  | Int int
+  | Float float
+  | Map map
+  | List list
+  | Link link
+} representation kinded
+```
+
 # Key Value Database
 
 ```sh
@@ -14,9 +56,8 @@ type Operation union {
 } representation keyed
 
 type OpList [&Operation]
-type HAMT {String:Link}
 type TransactionV1 struct {
-  head HAMT
+  head &HashMapRoot
   ops OpList
   prev nullable &Transaction
 }

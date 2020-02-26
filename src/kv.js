@@ -1,5 +1,6 @@
 const validate = require('./ipld-schema')(require('./schema.json'))
 const fromBlock = (block, className) => validate(block.decode(), className)
+const hamtBulk = require('./hamt')
 
 const noResolver = () => {
   throw new Error('Operation conflict and no resolver has been provided')
@@ -37,22 +38,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
     }
 
-    // TODO: replace with a full HAMT
     const head = kvt.v1.head
 
-    for (const block of keyMap.values()) {
+    let last
+    for await (const block of hamtBulk(Block, get, head, keyMap.values(), codec)) {
+      last = block
       yield block
-      const op = block.decodeUnsafe()
-      if (op.set) {
-        head[op.set.key] = op.set.val
-      } else if (op.del) {
-        delete head[op.del.key]
-      } else {
-        throw new Error('Unknown operation' + JSON.stringify(op))
-      }
     }
     const ops = await Promise.all(Array.from(keyMap.values()).map(block => block.cid()))
-    yield toBlock({ v1: { head, ops, prev: await rootBlock.cid() } }, 'Transaction')
+    yield toBlock({ v1: { head: await last.cid(), ops, prev: await rootBlock.cid() } }, 'Transaction')
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -144,12 +138,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
   }
 
-  const empty = toBlock({ v1: { head: {}, ops: [], prev: null } }, 'Transaction')
+  const emptyHamt = hamtBulk.empty(Block, codec)
+  const emptyData = async () => ({ v1: { head: await emptyHamt.cid(), ops: [], prev: null } })
+  const empty = (async () => toBlock(await emptyData(), 'Transaction'))()
 
   const exports = (...args) => new KeyValueDatabase(...args)
   exports.create = async store => {
-    await store.put(empty)
-    const root = await empty.cid()
+    const _empty = await empty
+    await Promise.all([store.put(_empty), store.put(emptyHamt)])
+    const root = await _empty.cid()
     return new KeyValueDatabase(root, store)
   }
   return exports
