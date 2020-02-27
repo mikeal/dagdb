@@ -1,6 +1,6 @@
 const validate = require('./ipld-schema')(require('./schema.json'))
 const fromBlock = (block, className) => validate(block.decode(), className)
-const hamtBulk = require('./hamt')
+const hamt = require('./hamt')
 
 const noResolver = () => {
   throw new Error('Operation conflict and no resolver has been provided')
@@ -41,7 +41,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const head = kvt.v1.head
 
     let last
-    for await (const block of hamtBulk(Block, get, head, keyMap.values(), codec)) {
+    for await (const block of hamt.bulk(Block, get, head, keyMap.values(), codec)) {
       last = block
       yield block
     }
@@ -101,6 +101,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       for (const key of this.cache.del) {
         trans.del(key)
       }
+      this.clear()
       const root = this.root
       const _commit = commitKeyValueTransaction(trans.ops, root, this.store.get.bind(this.store))
       const promises = []
@@ -112,6 +113,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       await Promise.all([...this.cache.pending, ...promises])
       const cid = await last.cid()
       if (this.root !== root) {
+        // TODO: re-add transactions back to the cache
         throw new Error('Cannot concurrently commit transactions')
       }
       this.root = cid
@@ -128,17 +130,18 @@ module.exports = (Block, codec = 'dag-cbor') => {
       // TODO: replace with HAMT
       const root = await this.store.get(this.root)
       const head = root.decode().v1.head
-      if (!head[key]) throw new Error(`No key named ${key}`)
-      const block = await this.store.get(head[key])
+      const link = await hamt.get(head, key, this.store.get.bind(this.store))
+      if (!link) throw new Error(`No key named ${key}`)
+      const block = await this.store.get(link)
 
       // one last cache check since there was async work
-      if (this._get(key)) return this._get(key)
+      if (this._get(key)) return this._get(key).decode()
 
       return block.decode()
     }
   }
 
-  const emptyHamt = hamtBulk.empty(Block, codec)
+  const emptyHamt = hamt.empty(Block, codec)
   const emptyData = async () => ({ v1: { head: await emptyHamt.cid(), ops: [], prev: null } })
   const empty = (async () => toBlock(await emptyData(), 'Transaction'))()
 

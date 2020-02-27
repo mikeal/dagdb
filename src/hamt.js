@@ -10,7 +10,12 @@ function murmurHasher (key) {
 }
 iamap.registerHasher('murmur3-32', 32, murmurHasher)
 
-const config = { hashAlg: 'murmur3-32'}
+const noop = () => {}
+const config = { hashAlg: 'murmur3-32' }
+const isEqual = (one, two) => one.equals(two)
+const isLink = isCID
+const mkload = get => cid => get(cid).then(block => block.decode())
+const store = { isEqual, isLink }
 
 const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor') {
   ops = Array.from(ops).map(block => block.decodeUnsafe())
@@ -20,10 +25,9 @@ const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor')
     blocks.push(block)
     return block.cid()
   }
-  const load = cid => get(cid).then(block => block.decode())
-  const isEqual = (one, two) => one.equals(two)
 
-  let map = await iamap.load({ save, load, isEqual, isLink: isCID}, head)
+  const load = mkload(get)
+  let map = await iamap.load({ save, load, ...store}, head)
   for (const op of ops) {
     if (op.set) {
       map = await map.set(op.set.key, op.set.val)
@@ -38,12 +42,18 @@ const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor')
   yield * blocks
 }
 
-const noop = () => {}
-const fixture = { save: noop, load: noop, isEqual: noop, isLink: noop }
+const fixture = { save: noop, load: noop, ...store }
 const empty = (Block, codec) => {
   const map = new iamap.IAMap(fixture, config)
   return Block.encoder(map.toSerializable(), codec)
 }
 
-module.exports = transaction
+const get = async (head, key, get) => {
+  const load = mkload(get)
+  const map = await iamap.load({save: noop, load, ...store}, head)
+  return map.get(key)
+}
+
+module.exports.bulk = transaction
 module.exports.empty = empty
+module.exports.get = get
