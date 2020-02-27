@@ -1,4 +1,4 @@
-#[HAMT](https://github.com/ipld/specs/blob/master/data-structures/hashmap.md)
+# [HAMT](https://github.com/ipld/specs/blob/master/data-structures/hashmap.md)
 
 ```sh
 type HashMapData [Element]
