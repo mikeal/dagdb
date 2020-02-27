@@ -156,6 +156,71 @@
           "v1": "TransactionV1"
         }
       }
+    },
+    "SecondaryKeyValueIndex": {
+      "kind": "struct",
+      "fields": {
+        "path": {
+          "type": "String"
+        },
+        "head": {
+          "type": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          }
+        },
+        "index": {
+          "type": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
+        },
+        "rmap": {
+          "type": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Action": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "skvf": "SecondaryKeyValueFilter"
+        }
+      }
+    },
+    "DatabaseV1": {
+      "kind": "struct",
+      "fields": {
+        "tags": {
+          "type": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          }
+        },
+        "actions": {
+          "type": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          }
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Database": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "v1": "DatabaseV1"
+        }
+      }
     }
   }
 }

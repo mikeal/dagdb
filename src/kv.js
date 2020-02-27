@@ -153,6 +153,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const root = await _empty.cid()
     return new KeyValueTransaction(root, store)
   }
-  exports.transaction = async (store, root) => new KVT(root, store)
+  exports.transaction = (store, root) => new KVT(root, store)
   return exports
 }
