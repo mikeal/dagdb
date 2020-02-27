@@ -2,6 +2,10 @@ const validate = require('./ipld-schema')(require('./schema.json'))
 const fromBlock = (block, className) => validate(block.decode(), className)
 const hamt = require('./hamt')
 
+const readonly = (source, key, value) => {
+  Object.defineProperty(source, key, { value, writable: false })
+}
+
 const noResolver = () => {
   throw new Error('Operation conflict and no resolver has been provided')
 }
@@ -66,9 +70,9 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
   }
 
-  class KeyValueDatabase {
+  class KeyValueTransaction {
     constructor (root, store) {
-      this.root = root
+      readonly(this, 'root', root)
       this.rootTransaction = store.get(root).then(block => {
         return fromBlock(block, 'Transaction')
       })
@@ -76,12 +80,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
       this.cache = { set: {}, del: new Set(), pending: [] }
     }
 
-    clear () {
-      this.cache = { set: {}, del: new Set(), pending: [] }
-    }
-
     set (key, block) {
-      // TODO: move this a queue/batch for perf
+      if (this.spent) throw new Error('Transaction already commited')
       if (!isBlock(block)) block = Block.encoder(block, codec)
       if (this.cache.del.has(key)) this.del.remove(key)
       this.cache.set[key] = block
@@ -89,11 +89,18 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     del (key) {
+      if (this.spent) throw new Error('Transaction already commited')
       if (this.cache.set[key]) delete this.cache.set[key]
       this.cache.del.add(key)
     }
 
-    async commit () {
+    commit () {
+      if (this.spent) return this.spent
+      readonly(this, 'spent', this._commit())
+      return this.spent
+    }
+
+    async _commit () {
       const trans = new Transaction()
       for (const [key, block] of Object.entries(this.cache.set)) {
         trans.set(key, block)
@@ -101,7 +108,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
       for (const key of this.cache.del) {
         trans.del(key)
       }
-      this.clear()
       const root = this.root
       const _commit = commitKeyValueTransaction(trans.ops, root, this.store.get.bind(this.store))
       const promises = []
@@ -111,12 +117,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
         promises.push(this.store.put(block))
       }
       await Promise.all([...this.cache.pending, ...promises])
-      const cid = await last.cid()
-      if (this.root !== root) {
-        // TODO: re-add transactions back to the cache
-        throw new Error('Cannot concurrently commit transactions')
-      }
-      this.root = cid
+      return last.cid()
     }
 
     _get (key) {
@@ -127,7 +128,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       if (this._get(key)) return this._get(key)
-      // TODO: replace with HAMT
       const root = await this.store.get(this.root)
       const head = root.decode().v1.head
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
@@ -145,12 +145,14 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const emptyData = async () => ({ v1: { head: await emptyHamt.cid(), ops: [], prev: null } })
   const empty = (async () => toBlock(await emptyData(), 'Transaction'))()
 
-  const exports = (...args) => new KeyValueDatabase(...args)
+  const KVT = KeyValueTransaction
+  const exports = (...args) => new KVT(...args)
   exports.create = async store => {
     const _empty = await empty
     await Promise.all([store.put(_empty), store.put(emptyHamt)])
     const root = await _empty.cid()
-    return new KeyValueDatabase(root, store)
+    return new KeyValueTransaction(root, store)
   }
+  exports.transaction = async (store, root) => new KVT(root, store)
   return exports
 }
