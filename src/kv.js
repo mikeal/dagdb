@@ -123,7 +123,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     _get (key) {
       // Check cache
       if (this.cache.set[key]) return this.cache.set[key].decode()
-      if (this.cache.del.has(key)) throw new Error(`No key named ${key}`)
+      if (this.cache.del.has(key)) throw new Error(`No key named "${key}"`)
     }
 
     async get (key) {
@@ -131,7 +131,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const root = await this.store.get(this.root)
       const head = root.decode().v1.head
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
-      if (!link) throw new Error(`No key named ${key}`)
+      if (!link) throw new Error(`No key named "${key}"`)
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
@@ -153,6 +153,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const root = await _empty.cid()
     return new KeyValueTransaction(root, store)
   }
-  exports.transaction = (store, root) => new KVT(root, store)
+  exports.transaction = (root, store) => new KVT(root, store)
   return exports
 }

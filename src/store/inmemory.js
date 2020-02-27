@@ -1,3 +1,9 @@
+class Missing extends Error {
+  get status () {
+    return 404
+  }
+}
+
 class InMemory {
   constructor () {
     this.storage = new Map()
@@ -11,7 +17,7 @@ class InMemory {
   async get (cid) {
     const key = cid.toString('base64')
     const value = this.storage.get(key)
-    if (!value) throw new Error(`Do not have ${key} in store`)
+    if (!value) throw new Missing(`Do not have ${key} in store`)
     return value
   }
 }

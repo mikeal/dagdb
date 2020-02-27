@@ -89,10 +89,10 @@ type SecondaryKeyValueIndex struct {
 
 `index` is the stored secondary index. The key being the secondary
 key and the value being *another* HashMapRoot. The keys in the final
-HAMT are the multibase(base64) cid's of the original data.
+HAMT are the keys from the original data pointing at the full value.
 
-`rmap` is a HAMT that maps the original data to the resolved secondary
-index. This way, if the value for the secondar index is modified or the
+`rmap` is a HAMT that maps the primary key data to the resolved secondary
+index. This way, if the value for the secondary index is modified or the
 value removed from the primary store the index can be updated to reflect
 the new state. The keys are multibase(base64) cid's of the original data
 and the value is the string value for the secondary index key.
@@ -130,4 +130,5 @@ type Database union {
 transaction root of related kv store.
 
 `actions` is a key/value pairing of a tag name to
-related actions.
+related actions. Each action is also named, so the
+value here is a HashMapRoot.
