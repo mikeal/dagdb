@@ -4,6 +4,7 @@
   "description": "Syncable large scale database built on IPLD",
   "main": "src/index.js",
   "scripts": {
+    "test": "mocha test/test-*.js",
     "coverage": "nyc --reporter=html mocha test/test-*.js && npx http-server coverage",
     "build": "ipld-schema to-json Schema.md > src/schema.json"
   },

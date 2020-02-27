@@ -29,10 +29,11 @@ const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor')
   const load = mkload(get)
   let map = await iamap.load({ save, load, ...store}, head)
   for (const op of ops) {
+    /* istanbul ignore else */
     if (op.set) {
       map = await map.set(op.set.key, op.set.val)
     } else if (op.del) {
-      map = await map.del(op.del.key)
+      map = await map.delete(op.del.key)
     } else {
       throw new Error('Invalid operation')
     }
@@ -57,3 +58,5 @@ const get = async (head, key, get) => {
 module.exports.bulk = transaction
 module.exports.empty = empty
 module.exports.get = get
+module.exports._store = store
+module.exports._noop = noop

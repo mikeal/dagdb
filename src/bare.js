@@ -1,5 +1,5 @@
-module.exports = Block => {
+module.exports = (...args) => {
   return {
-    kv: require('./kv')(Block)
+    kv: require('./kv')(...args)
   }
 }
