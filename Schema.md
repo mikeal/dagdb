@@ -1,5 +1,8 @@
 # [HAMT](https://github.com/ipld/specs/blob/master/data-structures/hashmap.md)
 
+This schema is only here for reference. It's not actually verified or validated
+by this library because we use [an existing implementation](https://github.com/rvagg/iamap).
+
 ```sh
 type HashMapData [Element]
 type HashMapRoot struct {
@@ -84,7 +87,7 @@ type SecondaryKeyValueIndex struct {
 
 `head` is the DagDB transaction head for the primary store.
 
-`index` is the stored secondary index. They key being the secondary
+`index` is the stored secondary index. The key being the secondary
 key and the value being *another* HashMapRoot. The keys in the final
 HAMT are the multibase(base64) cid's of the original data.
 
