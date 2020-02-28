@@ -1,6 +1,7 @@
-const validate = require('./ipld-schema')(require('./schema.json'))
+const validate = require('../../ipld-schema-validation')(require('./schema.json'))
 const fromBlock = (block, className) => validate(block.decode(), className)
 const hamt = require('./hamt')
+const isCID = require('./is-cid')
 
 const readonly = (source, key, value) => {
   Object.defineProperty(source, key, { value, writable: false })
@@ -14,9 +15,35 @@ class NotFound extends Error {
   get status () {
     return 404
   }
+
   get kvs () {
     return 'notfound'
   }
+}
+
+const createGet = (local, remote) => {
+  const cache = new Map()
+  const _cache = (key, block) => cache.set(key, block)
+  const get = async cid => {
+    const key = cid.toString('base64')
+    if (cache.has(key)) return cache.get(key)
+    let ret
+    try {
+      ret = await local.get(cid)
+    } catch (e) {
+      // noop
+    }
+    if (ret) {
+      _cache(await ret.cid(), ret)
+      return ret
+    }
+    if (cache.has(key)) return cache.get(key)
+    const block = await remote.get(cid)
+    local.put(block)
+    _cache(key, block)
+    return block
+  }
+  return get
 }
 
 module.exports = (Block, codec = 'dag-cbor') => {
@@ -26,9 +53,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const rootBlock = await get(root)
     const kvt = validate(rootBlock.decode(), 'Transaction')
     const blocks = (await Promise.all(_ops.map(async o => {
+      if (Block.isBlock(o)) return o
       if (o.set) o.set.val = await o.set.val
-      return o
-    }))).map(op => toBlock(op, 'Operation'))
+      return toBlock(o, 'Operation')
+    })))
     const seen = new Set()
     const keyMap = new Map()
     // hash in parallel
@@ -148,6 +176,52 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
       return block.decode()
     }
+  }
+
+  const dedupe = async (oldOps, newOps) => {
+    const ops = []
+    const seen = new Set()
+    const blocks = oldOps.concat(newOps)
+    const keys = await Promise.all(blocks.map(b => b.cid()))
+    for (const block of blocks) {
+      const key = keys.shift().toString('base64')
+      if (seen.has(key)) continue
+      seen.add(key)
+      ops.push(block.decodeUnsafe())
+    }
+    return ops
+  }
+
+  const replicate = async (oldRoot, newRoot, local, remote, reconcile = dedupe, conflictResolve = noResolver) => {
+    // pushes newRoot (source) to destination's oldRoot
+    const get = createGet(local, remote)
+
+    if (isCID(oldRoot)) oldRoot = await get(oldRoot)
+    if (isCID(newRoot)) newRoot = await get(newRoot)
+    const seen = new Set()
+
+    const find = root => {
+      const decoded = root.decodeUnsafe()
+      const key = decoded.head.toString('base64')
+      if (seen.has(key)) return decoded.head
+      seen.add(key)
+      return get(decoded.prev).then(block => find(block))
+    }
+
+    const common = await Promise.race([find(oldRoot), find(newRoot)])
+
+    const since = async (trans, head, ops = []) => {
+      const decoded = trans.decodeUnsafe()
+      if (decoded.head.equals(head)) return ops
+      ops.push(decoded.ops.map(op => get(op)))
+      const prev = await get(decoded.prev)
+      return since(prev, head, ops)
+    }
+
+    const [oldOps, newOps] = await Promise.all([since(oldRoot, common), since(newRoot, common)])
+
+    // TODO: remove older mutations on the same key from the each op set
+    throw new Error('unfinished')
   }
 
   const emptyHamt = hamt.empty(Block, codec)

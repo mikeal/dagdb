@@ -27,7 +27,7 @@ const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor')
   }
 
   const load = mkload(get)
-  let map = await iamap.load({ save, load, ...store}, head)
+  let map = await iamap.load({ save, load, ...store }, head)
   for (const op of ops) {
     /* istanbul ignore else */
     if (op.set) {
@@ -51,7 +51,7 @@ const empty = (Block, codec) => {
 
 const get = async (head, key, get) => {
   const load = mkload(get)
-  const map = await iamap.load({save: noop, load, ...store}, head)
+  const map = await iamap.load({ save: noop, load, ...store }, head)
   return map.get(key)
 }
 

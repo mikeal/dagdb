@@ -1,6 +1,4 @@
-
 const { it } = require('mocha')
-const inmem = require('../src/store/inmemory')
 const hamt = require('../src/hamt')
 const test = it
 const same = require('assert').deepStrictEqual
@@ -12,4 +10,3 @@ test('test store comparison', async () => {
   same(hamt._store.isEqual(await missing.cid(), await missing.cid()), true)
   same(hamt._noop(), undefined)
 })
-
