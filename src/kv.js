@@ -50,19 +50,13 @@ const createGet = (local, remote) => {
 module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
-  const commitKeyValueTransaction = async function * (_ops, root, get, conflictResolver = noResolver) {
+  const commitKeyValueTransaction = async function * (opBlocks, root, get, conflictResolver = noResolver) {
     const rootBlock = Block.isBlock(root) ? root : await get(root)
     const kvt = validate(rootBlock.decode(), 'Transaction')
-    const blocks = (await Promise.all(_ops.map(async o => {
-      if (Block.isBlock(o)) return o
-      if (o.set) o.set.val = await o.set.val
-      return toBlock(o, 'Operation')
-    })))
     const seen = new Set()
     const keyMap = new Map()
     // hash in parallel
-    await Promise.all(blocks.map(b => b.cid()))
-    for (const block of blocks) {
+    for (const block of opBlocks) {
       const cid = await block.cid()
       const cidString = cid.toString('base64')
 
@@ -96,43 +90,24 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   const isBlock = v => Block.isBlock(v)
 
-  class Transaction {
-    constructor () {
-      this.ops = []
-    }
-
-    set (key, block) {
-      const val = block.cid()
-      this.ops.push({ set: { key, val } })
-    }
-
-    del (key) {
-      this.ops.push({ del: { key } })
-    }
-  }
-
   class KeyValueTransaction {
     constructor (root, store) {
       readonly(this, 'root', root)
-      this.rootTransaction = store.get(root).then(block => {
-        return fromBlock(block, 'Transaction')
-      })
       this.store = store
-      this.cache = { set: {}, del: new Set(), pending: [] }
+      this.cache = new Map()
     }
 
-    set (key, block) {
+    async set (key, block) {
       if (this.spent) throw new Error('Transaction already commited')
       if (!isBlock(block)) block = Block.encoder(block, codec)
-      if (this.cache.del.has(key)) this.del.remove(key)
-      this.cache.set[key] = block
-      this.cache.pending.push(this.store.put(block))
+      const op = toBlock({ set: { key, val: await block.cid() }}, 'Operation')
+      this.cache.set(key, [op, block])
     }
 
-    del (key) {
+    async del (key) {
       if (this.spent) throw new Error('Transaction already commited')
-      if (this.cache.set[key]) delete this.cache.set[key]
-      this.cache.del.add(key)
+      const op = toBlock({ del: { key } }, 'Operation')
+      this.cache.set(key, [op])
     }
 
     commit () {
@@ -142,33 +117,36 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async _commit () {
-      const trans = new Transaction()
-      for (const [key, block] of Object.entries(this.cache.set)) {
-        trans.set(key, block)
-      }
-      for (const key of this.cache.del) {
-        trans.del(key)
-      }
       const root = this.root
-      const _commit = commitKeyValueTransaction(trans.ops, root, this.store.get.bind(this.store))
-      const promises = []
+      const ops = []
+      const pending = []
+      for (const [op, block] of this.cache.values()) {
+        ops.push(op)
+        pending.push(this.store.put(op))
+        if (block) pending.push(this.store.put(block))
+      }
+      if (!ops.length) throw new Error('There are no pending operations to commit')
+      const _commit = commitKeyValueTransaction(ops, root, this.store.get.bind(this.store))
       let last
       for await (const block of _commit) {
         last = block
-        promises.push(this.store.put(block))
+        pending.push(this.store.put(block))
       }
-      await Promise.all([...this.cache.pending, ...promises])
+      await Promise.all([...pending])
       return last.cid()
     }
 
-    _get (key) {
-      // Check cache
-      if (this.cache.set[key]) return this.cache.set[key].decode()
-      if (this.cache.del.has(key)) throw new NotFound(`No key named "${key}"`)
+    __get (key) {
+      if (this.cache.has(key)) {
+        const [ , block] = this.cache.get(key)
+        if (!block) throw new NotFound(`No key named "${key}"`)
+        return block
+      }
+      return null
     }
 
-    async get (key) {
-      if (this._get(key)) return this._get(key)
+    async getBlock (key) {
+      if (this.__get(key)) return this.__get(key)
       const root = await this.store.get(this.root)
       const head = root.decode().v1.head
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
@@ -176,8 +154,12 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
-      if (this._get(key)) return this._get(key).decode()
+      if (this.__get(key)) return this.__get(key)
+      return block
+    }
 
+    async get (key) {
+      const block = await this.getBlock(key)
       return block.decode()
     }
 
