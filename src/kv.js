@@ -1,6 +1,6 @@
 const schema = require('./schema.json')
 const validate = require('ipld-schema-validation')(schema)
-const fromBlock = (block, className) => validate(block.decode(), className)
+const fromBlock = (block, className) => validate(block.decodeUnsafe(), className)
 const hamt = require('./hamt')
 const isCID = require('./is-cid')
 
@@ -8,9 +8,7 @@ const readonly = (source, key, value) => {
   Object.defineProperty(source, key, { value, writable: false })
 }
 
-const noResolver = () => {
-  throw new Error('Operation conflict and no resolver has been provided')
-}
+const lastWins = (old, latest) => latest
 
 class NotFound extends Error {
   get status () {
@@ -50,42 +48,26 @@ const createGet = (local, remote) => {
 module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
-  const commitKeyValueTransaction = async function * (opBlocks, root, get, conflictResolver = noResolver) {
+  const commitKeyValueTransaction = async function * (opBlocks, root, get) {
     const rootBlock = Block.isBlock(root) ? root : await get(root)
-    const kvt = validate(rootBlock.decode(), 'Transaction')
-    const seen = new Set()
-    const keyMap = new Map()
-    // hash in parallel
-    for (const block of opBlocks) {
-      const cid = await block.cid()
-      const cidString = cid.toString('base64')
+    const kvt = fromBlock(rootBlock, 'Transaction')
 
-      // remove duplicate ops
-      if (seen.has(cidString)) continue
-      else seen.add(cidString)
-
-      // resole any conflicts over the same key
-      const op = block.decodeUnsafe()
-      const key = op[Object.keys(op)[0]].key
-      if (keyMap.has(key)) {
-        keyMap.set(key, conflictResolver(keyMap.get(key), block))
-      } else {
-        keyMap.set(key, block)
-      }
+    const opLinks = []
+    const opDecodes = []
+    for (const op of opBlocks) {
+      opDecodes.push(fromBlock(op, 'Operation'))
+      opLinks.push(op.cid())
     }
 
-    const head = kvt.v1.head
-
-    console.log({ops: Array.from(keyMap.values())})
     let last
-    for await (const block of hamt.bulk(Block, get, head, keyMap.values(), codec)) {
+    for await (const block of hamt.bulk(Block, get, kvt.v1.head, opDecodes, codec)) {
       last = block
       yield block
     }
-    const ops = await Promise.all(Array.from(keyMap.values()).map(block => block.cid()))
     if (!last) throw new Error('nothing from hamt')
-    console.error({last, rootBlock})
-    yield toBlock({ v1: { head: await last.cid(), ops, prev: await rootBlock.cid() } }, 'Transaction')
+
+    const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
+    yield toBlock({ v1: { head, ops, prev } }, 'Transaction')
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -100,7 +82,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async set (key, block) {
       if (this.spent) throw new Error('Transaction already commited')
       if (!isBlock(block)) block = Block.encoder(block, codec)
-      const op = toBlock({ set: { key, val: await block.cid() }}, 'Operation')
+      const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
     }
 
@@ -138,7 +120,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     __get (key) {
       if (this.cache.has(key)) {
-        const [ , block] = this.cache.get(key)
+        const [, block] = this.cache.get(key)
         if (!block) throw new NotFound(`No key named "${key}"`)
         return block
       }
@@ -148,7 +130,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async getBlock (key) {
       if (this.__get(key)) return this.__get(key)
       const root = await this.store.get(this.root)
-      const head = root.decode().v1.head
+      const head = fromBlock(root, 'Transaction').v1.head
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) throw new NotFound(`No key named "${key}"`)
       const block = await this.store.get(link)
@@ -163,14 +145,18 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return block.decode()
     }
 
-    async pull (trans, reconcile, conflictResolve) {
+    async pull (trans, reconcile, conflictResolve = lastWins) {
       const local = this.store.get.bind(this.store)
       const remote = trans.store.get.bind(trans.store)
       const oldRoot = this.root
       const newRoot = trans.root
-      const replicator = replicate(oldRoot, newRoot, local, remote, reconcile, conflictResolve)
-      for await (const block of replicator) {
-        await this.store.put(block)
+      const staged = await replicate(oldRoot, newRoot, local, remote, reconcile)
+      for (const [key, cached] of staged.entries()) {
+        if (this.cache.has(key)) {
+          this.cache.set(key, lastWins(this.cache.get(key), cached))
+        } else {
+          this.cache.set(key, cached)
+        }
       }
     }
   }
@@ -184,16 +170,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const id = keys.shift().toString('base64')
       if (seen.has(id)) continue
       seen.add(id)
-      const decoded = block.decodeUnsafe()
+      const decoded = fromBlock(block, 'Operation')
       const key = decoded.set ? decoded.set.key : decoded.del.key
       if (ops.has(key)) throw new Error(`Conflict, concurrent over-writes of the same key "${key}"`)
       ops.set(key, block)
     }
-    return ops.values()
+    return ops
   }
 
-  const replicate = async function * (oldRoot, newRoot, local, remote,
-    reconcile = dedupe, conflictResolver = noResolver) {
+  const replicate = async function * (oldRoot, newRoot, local, remote, reconcile = dedupe) {
     // pushes newRoot (source) to destination's oldRoot
     const get = createGet(local, remote)
 
@@ -202,7 +187,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const seen = new Set()
 
     const find = root => {
-      const decoded = root.decodeUnsafe()
+      const decoded = fromBlock(root, 'Transaction')
       // should we validate the schema here or just wait for it to potentially fail?
       const { head, prev } = decoded.v1
       const key = head.toString('base64')
@@ -214,7 +199,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const common = await Promise.race([find(oldRoot), find(newRoot)])
 
     const since = async (trans, _head, _ops = new Map()) => {
-      const decoded = trans.decodeUnsafe()
+      const decoded = fromBlock(trans, 'Transaction')
       const { head, prev, ops } = decoded.v1
       if (head.equals(_head)) return _ops
       for (const op of ops) {
@@ -227,13 +212,17 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const _all = root => since(root, common).then(ops => Promise.all(Array.from(ops.values())))
 
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
-    const ops = Array.from(await reconcile(oldOps, newOps))
-
-    for await (const block of commitKeyValueTransaction(ops, oldRoot, get, conflictResolver)) {
-      yield block
+    const ops = await reconcile(oldOps, newOps)
+    const staged = new Map()
+    for (const [key, op] of ops.entries()) {
+      const decoded = op.decodeUnsafe()
+      if (decoded.set) {
+        staged.set(key, [op, await get(decoded.set.val)])
+      } else {
+        staged.set(key, [op])
+      }
     }
-    // TODO: remove older mutations on the same key from the each op set
-    throw new Error('unfinished')
+    return staged
   }
 
   const emptyHamt = hamt.empty(Block, codec)
