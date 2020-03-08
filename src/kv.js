@@ -115,7 +115,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
         pending.push(this.store.put(block))
       }
       await Promise.all([...pending])
-      return last.cid()
+      return new KeyValueTransaction(await last.cid(), this.store)
     }
 
     __get (key) {
@@ -178,7 +178,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return ops
   }
 
-  const replicate = async function * (oldRoot, newRoot, local, remote, reconcile = dedupe) {
+  const replicate = async (oldRoot, newRoot, local, remote, reconcile = dedupe) => {
     // pushes newRoot (source) to destination's oldRoot
     const get = createGet(local, remote)
 
@@ -231,6 +231,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   const KVT = KeyValueTransaction
   const exports = (...args) => new KVT(...args)
+  exports.open = (root, store) => new KVT(root, store)
   exports.create = async store => {
     const _empty = await empty
     await Promise.all([store.put(_empty), store.put(emptyHamt)])

@@ -14,19 +14,21 @@ const create = async (_kv = kv) => {
 
 const basics = async kv => {
   const { kvs } = await create(kv)
-  kvs.set('test', { hello: 'world' })
+  await kvs.set('test', { hello: 'world' })
   let obj = await kvs.get('test')
   same(obj, { hello: 'world' })
-  await kvs.commit()
+  const root = await kvs.commit()
   obj = await kvs.get('test')
   same(obj, { hello: 'world' })
-  return kvs
+  return root
 }
 
 test('basic replication', async () => {
   const base = await basics()
   const { kvs } = await create()
-  const cid = await kvs.pull(base)
+  await kvs.pull(base)
+  console.log(kvs)
+  same(await kvs.get('test'), { hello: 'world' })
 })
 
 /*

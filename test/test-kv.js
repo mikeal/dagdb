@@ -17,9 +17,10 @@ const basics = async kv => {
   await kvs.set('test', { hello: 'world' })
   let obj = await kvs.get('test')
   same(obj, { hello: 'world' })
-  await kvs.commit()
-  obj = await kvs.get('test')
+  const latest = await kvs.commit()
+  obj = await latest.get('test')
   same(obj, { hello: 'world' })
+  return latest
 }
 
 test('basic set/get', async () => {
@@ -29,8 +30,7 @@ test('basic set/get', async () => {
 test('basic overwrite', async () => {
   let { store, kvs } = await create()
   await kvs.set('test', { foo: 0 })
-  const head = await kvs.commit()
-  kvs = kv.transaction(head, store)
+  kvs = await kvs.commit()
   same(await kvs.get('test'), { foo: 0 })
   await kvs.set('test', { foo: 1 })
   same(await kvs.get('test'), { foo: 1 })
@@ -64,14 +64,13 @@ const notfound = async (kvs, key) => {
 test('basic removal', async () => {
   let { store, kvs } = await create()
   await kvs.set('test', { foo: 0 })
-  const head = await kvs.commit()
-  kvs = kv.transaction(head, store)
+  kvs = await kvs.commit()
   same(await kvs.get('test'), { foo: 0 })
   await kvs.del('test')
   await notfound(kvs, 'test')
   const next = await kvs.commit()
   await notfound(kvs, 'test')
-  kvs = kv.transaction(next, store)
+  kvs = next
   await notfound(kvs, 'test')
 })
 
