@@ -24,7 +24,7 @@ const createGet = (local, remote) => {
   const cache = new Map()
   const _cache = (key, block) => cache.set(key, block)
   const get = async cid => {
-    if (cid.decodeUnsafe) throw new Error('here')
+    if (!isCID(cid)) throw new Error('Must be CID')
     const key = cid.toString('base64')
     if (cache.has(key)) return cache.get(key)
     let ret
@@ -193,19 +193,36 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const key = head.toString('base64')
       if (seen.has(key)) return head
       seen.add(key)
+      if (!prev) return null
       return get(prev).then(block => find(block))
     }
 
-    const common = await Promise.race([find(oldRoot), find(newRoot)])
+    const race = async () => {
+      const [old, latest] = [find(oldRoot), find(newRoot)]
+      let common = await Promise.race([old, latest])
+      // TODO: cancel slower one
+      if (common) return common
+      else {
+        return (await Promise.all([old, latest])).filter(x => x)[0]
+      }
+    }
+
+    const common = await race()
+    if (!common) throw new Error('No common root between databases')
 
     const since = async (trans, _head, _ops = new Map()) => {
       const decoded = fromBlock(trans, 'Transaction')
-      const { head, prev, ops } = decoded.v1
+      let { head, prev, ops } = decoded.v1
       if (head.equals(_head)) return _ops
-      for (const op of ops) {
+      ops = await Promise.all(ops.map(op => get(op)))
+      for (const block of ops) {
+        const op = fromBlock(block, 'Operation')
         const key = op.set ? op.set.key : op.del.key
-        if (!_ops.has(key)) _ops.set(key, get(op))
+        if (!_ops.has(key)) _ops.set(key, block)
       }
+
+      throw new Error('this is broken, it should never hit the null point but the test is doing just that')
+      console.error({prev})
       return since(await get(prev), head, _ops)
     }
 
