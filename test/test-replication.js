@@ -27,7 +27,6 @@ test('basic replication', async () => {
   const base = await basics()
   const { kvs } = await create()
   await kvs.pull(base)
-  console.log(kvs)
   same(await kvs.get('test'), { hello: 'world' })
 })
 

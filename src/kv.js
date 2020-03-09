@@ -210,10 +210,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const common = await race()
     if (!common) throw new Error('No common root between databases')
 
-    const since = async (trans, _head, _ops = new Map()) => {
+    const since = async (trans, _ops = new Map()) => {
       const decoded = fromBlock(trans, 'Transaction')
       let { head, prev, ops } = decoded.v1
-      if (head.equals(_head)) return _ops
+      if (head.equals(common)) return _ops
       ops = await Promise.all(ops.map(op => get(op)))
       for (const block of ops) {
         const op = fromBlock(block, 'Operation')
@@ -221,12 +221,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
         if (!_ops.has(key)) _ops.set(key, block)
       }
 
-      throw new Error('this is broken, it should never hit the null point but the test is doing just that')
-      console.error({prev})
-      return since(await get(prev), head, _ops)
+      return since(await get(prev), _ops)
     }
 
-    const _all = root => since(root, common).then(ops => Promise.all(Array.from(ops.values())))
+    const _all = root => since(root).then(ops => Promise.all(Array.from(ops.values())))
 
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
     const ops = await reconcile(oldOps, newOps)
