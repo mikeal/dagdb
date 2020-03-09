@@ -166,6 +166,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const seen = new Set()
     const blocks = oldOps.concat(newOps)
     const keys = await Promise.all(blocks.map(b => b.cid()))
+    // This is wrong.
+    // We should not return all the transactions, we should only
+    // return *new* transactions because all the oldOps are already
+    // applied to the current transaction.
     for (const block of blocks) {
       const id = keys.shift().toString('base64')
       if (seen.has(id)) continue
