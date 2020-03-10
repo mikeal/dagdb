@@ -1,24 +1,8 @@
 const schema = require('./schema.json')
-const validate = require('ipld-schema-validation')(schema)
-const fromBlock = (block, className) => validate(block.decodeUnsafe(), className)
 const hamt = require('./hamt')
-const isCID = require('./is-cid')
-
-const readonly = (source, key, value) => {
-  Object.defineProperty(source, key, { value, writable: false })
-}
+const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
 
 const lastWins = (old, latest) => latest
-
-class NotFound extends Error {
-  get status () {
-    return 404
-  }
-
-  get kvs () {
-    return 'notfound'
-  }
-}
 
 const createGet = (local, remote) => {
   const cache = new Map()

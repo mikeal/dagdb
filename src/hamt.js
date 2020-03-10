@@ -1,5 +1,5 @@
 const iamap = require('../../iamap')
-const isCID = require('./is-cid')
+const { isCID } = require('./utils')
 const assert = require('assert')
 const murmurhash3 = require('murmurhash3js-revisited')
 function murmurHasher (key) {
