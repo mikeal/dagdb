@@ -153,7 +153,7 @@
       "kind": "union",
       "representation": {
         "keyed": {
-          "v1": "TransactionV1"
+          "kv-v1": "TransactionV1"
         }
       }
     },
@@ -186,14 +186,6 @@
         "map": {}
       }
     },
-    "Action": {
-      "kind": "union",
-      "representation": {
-        "keyed": {
-          "skvf": "SecondaryKeyValueFilter"
-        }
-      }
-    },
     "DatabaseV1": {
       "kind": "struct",
       "fields": {
@@ -203,7 +195,7 @@
             "expectedType": "Transaction"
           }
         },
-        "actions": {
+        "indexes": {
           "type": {
             "kind": "link",
             "expectedType": "Transaction"
@@ -218,7 +210,7 @@
       "kind": "union",
       "representation": {
         "keyed": {
-          "v1": "DatabaseV1"
+          "db-v1": "DatabaseV1"
         }
       }
     }

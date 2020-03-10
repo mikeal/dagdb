@@ -60,14 +60,14 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     let last
-    for await (const block of hamt.bulk(Block, get, kvt.v1.head, opDecodes, codec)) {
+    for await (const block of hamt.bulk(Block, get, kvt['kv-v1'].head, opDecodes, codec)) {
       last = block
       yield block
     }
     if (!last) throw new Error('nothing from hamt')
 
     const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
-    yield toBlock({ v1: { head, ops, prev } }, 'Transaction')
+    yield toBlock({ 'kv-v1': { head, ops, prev } }, 'Transaction')
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -130,7 +130,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async getBlock (key) {
       if (this.__get(key)) return this.__get(key)
       const root = await this.store.get(this.root)
-      const head = fromBlock(root, 'Transaction').v1.head
+      const head = fromBlock(root, 'Transaction')['kv-v1'].head
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) throw new NotFound(`No key named "${key}"`)
       const block = await this.store.get(link)
@@ -193,7 +193,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const find = root => {
       const decoded = fromBlock(root, 'Transaction')
       // should we validate the schema here or just wait for it to potentially fail?
-      const { head, prev } = decoded.v1
+      const { head, prev } = decoded['kv-v1']
       const key = head.toString('base64')
       if (seen.has(key)) return head
       seen.add(key)
@@ -216,7 +216,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     const since = async (trans, _ops = new Map()) => {
       const decoded = fromBlock(trans, 'Transaction')
-      let { head, prev, ops } = decoded.v1
+      let { head, prev, ops } = decoded['kv-v1']
       if (head.equals(common)) return _ops
       ops = await Promise.all(ops.map(op => get(op)))
       for (const block of ops) {
@@ -245,7 +245,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
   }
 
   const emptyHamt = hamt.empty(Block, codec)
-  const emptyData = async () => ({ v1: { head: await emptyHamt.cid(), ops: [], prev: null } })
+  const emptyData = async () => ({ 'kv-v1': { head: await emptyHamt.cid(), ops: [], prev: null } })
   const empty = (async () => toBlock(await emptyData(), 'Transaction'))()
 
   const KVT = KeyValueTransaction

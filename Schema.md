@@ -65,7 +65,7 @@ type TransactionV1 struct {
   prev nullable &Transaction
 }
 type Transaction union {
-  | TransactionV1 "v1"
+  | TransactionV1 "kv-v1"
 } representation keyed
 ```
 
@@ -112,17 +112,13 @@ Typically, actions are not pushed to a remote, they are local
 to the device/store. Tags typically **are** pushed to a remote.
 
 ```sh
-type Action union {
-  | SecondaryKeyValueFilter "skvf"
-} representation keyed
-
 type DatabaseV1 struct {
   tags &Transaction
-  actions &Transaction
+  indexes &Transaction
 }
 
 type Database union {
-  | DatabaseV1 "v1"
+  | DatabaseV1 "db-v1"
 } representation keyed
 ```
 
