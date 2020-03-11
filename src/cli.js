@@ -23,10 +23,10 @@ const missing = async filename => {
 }
 
 const loadReadonly = async filename => {
-  const stream = fs.createReadStream(filename)
-  const car = await carfile.readStreaming(stream)
+  // const stream = fs.createReadStream(filename)
+  const car = await carfile.readFileComplete(filename)
   const root = await getRoot(car)
-  const store = { get: car.get.bind(car) }
+  const store = { get: cid => car.get(cid).then(data => Block.create(data, cid)) }
   return database(root, store)
 }
 const loadWritable = async filename => {
@@ -34,6 +34,16 @@ const loadWritable = async filename => {
 
 const tags = async argv => {
   const db = await loadReadonly(argv.dbfile)
+  let hasTags = false
+  for await (const [key, block] of db.tags({blocks: true})) {
+    hasTags = true
+    const decoded = block.decodeUnsafe()
+    console.log(key, Object.keys(decoded)[0])
+  }
+  if (!hasTags) {
+    console.error('No tags in this database')
+    process.exit(1)
+  }
 }
 
 const list = async argv => {

@@ -1,4 +1,4 @@
-const iamap = require('../../iamap')
+const iamap = require('iamap')
 const { isCID } = require('./utils')
 const assert = require('assert')
 const murmurhash3 = require('murmurhash3js-revisited')

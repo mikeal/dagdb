@@ -78,8 +78,9 @@ module.exports = (Block, codec = 'dag-cbor') => {
     all (opts) {
       opts = { ...opts, ...{ blocks: false } }
       const get = this.store.get.bind(this.store)
-      const _iter = hamt.all(this.root, get)
       const iter = async function * (t) {
+        const head = await t._getHead()
+        const _iter = hamt.all(head, get)
         for (const [key, block] of t.cache.entries()) {
           if (opts.blocks) yield [key, block]
           else yield [key, await block.cid()]
@@ -129,10 +130,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return null
     }
 
-    async getBlock (key) {
-      if (this.__get(key)) return this.__get(key)
+    async _getHead () {
       const root = await this.store.get(this.root)
       const head = fromBlock(root, 'Transaction')['kv-v1'].head
+      return head
+    }
+
+    async getBlock (key) {
+      if (this.__get(key)) return this.__get(key)
+      const head = await this._getHead()
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) throw new NotFound(`No key named "${key}"`)
       const block = await this.store.get(link)
