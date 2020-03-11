@@ -20,4 +20,3 @@ class NotFound extends Error {
 }
 
 module.exports = { NotFound, readonly, isCID, fromBlock, validate }
-

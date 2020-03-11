@@ -48,12 +48,26 @@ const empty = (Block, codec) => {
   return Block.encoder(map.toSerializable(), codec)
 }
 
-const get = async (head, key, get) => {
+const _load = async (head, get) => {
   const load = mkload(get)
   const map = await iamap.load({ save: noop, load, ...store }, head)
-  return map.get(key)
+  return map
 }
 
+const get = async (head, key, get) => {
+  const map = await _load(head, get)
+  return map.get(key)
+}
+const all = (root, get) => {
+  const iter = async function * () {
+    const map = await _load(root, get)
+    const entries = await map.entries()
+    yield * entries
+  }
+  return iter()
+}
+
+module.exports.all = all
 module.exports.bulk = transaction
 module.exports.empty = empty
 module.exports.get = get

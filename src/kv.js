@@ -1,4 +1,3 @@
-const schema = require('./schema.json')
 const hamt = require('./hamt')
 const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
 
@@ -74,6 +73,25 @@ module.exports = (Block, codec = 'dag-cbor') => {
       if (this.spent) throw new Error('Transaction already commited')
       const op = toBlock({ del: { key } }, 'Operation')
       this.cache.set(key, [op])
+    }
+
+    all (opts) {
+      opts = { ...opts, ...{ blocks: false } }
+      const get = this.store.get.bind(this.store)
+      const _iter = hamt.all(this.root, get)
+      const iter = async function * (t) {
+        for (const [key, block] of t.cache.entries()) {
+          if (opts.blocks) yield [key, block]
+          else yield [key, await block.cid()]
+        }
+        for await (const [key, cid] of _iter) {
+          if (!t.cache.has(key)) {
+            if (opts.blocks) yield [key, await get(cid)]
+            else yield [key, cid]
+          }
+        }
+      }
+      return iter(this)
     }
 
     commit () {
@@ -187,7 +205,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     const race = async () => {
       const [old, latest] = [find(oldRoot), find(newRoot)]
-      let common = await Promise.race([old, latest])
+      const common = await Promise.race([old, latest])
       // TODO: cancel slower one
       if (common) return common
       else {
@@ -234,6 +252,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   const KVT = KeyValueTransaction
   const exports = (...args) => new KVT(...args)
+  exports.empties = [empty, emptyHamt]
   exports.open = (root, store) => new KVT(root, store)
   exports.create = async store => {
     const _empty = await empty
