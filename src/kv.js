@@ -247,8 +247,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
   }
 
   const emptyHamt = hamt.empty(Block, codec)
-  const emptyData = async () => ({ 'kv-v1': { head: await emptyHamt.cid(), ops: [], prev: null } })
-  const empty = (async () => toBlock(await emptyData(), 'Transaction'))()
+  const emptyData = emptyHamt.cid().then(head => ({ 'kv-v1': { head, ops: [], prev: null } }))
+  const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 
   const KVT = KeyValueTransaction
   const exports = (...args) => new KVT(...args)

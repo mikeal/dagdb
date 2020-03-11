@@ -1,9 +1,9 @@
 const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
 const createKV = require('./kv')
 
-module.exports = async (Block, codec = 'dag-cbor') => {
+module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
-  const kv = await createKV(Block, codec)
+  const kv = createKV(Block, codec)
 
   class Database {
     constructor (root, store) {
@@ -28,15 +28,16 @@ module.exports = async (Block, codec = 'dag-cbor') => {
 
   // empty database
   const [emptyKV] = kv.empties
-  const _kvl = await emptyKV.cid()
-  const empty = toBlock({ 'db-v1': { tags: _kvl, indexes: _kvl } }, 'Database')
-  exports.empty = empty
+  const empty = emptyKV.then(block => block.cid().then(cid => {
+    return toBlock({ 'db-v1': { tags: cid, indexes: cid } }, 'Database')
+  }))
   exports.empties = [empty, ...kv.empties]
 
   exports.open = (root, store) => new Database(root, store)
   exports.create = async store => {
-    await Promise.all(exports.empties.map(block => store.put(block)))
+    await Promise.all(exports.empties.map(p => p.then(block => store.put(block))))
     const root = await empty.cid()
     return new Database(root, store)
   }
+  return exports
 }
