@@ -153,6 +153,18 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return block.decode()
     }
 
+    async has (key) {
+      try {
+        await this.get(key)
+      } catch (e) {
+        if (e.status !== 404) {
+          throw e
+        }
+        return false
+      }
+      return true
+    }
+
     async pull (trans, resolver = noResolver) {
       // we need to make all the cached blocks accessible
       // to the resolver
