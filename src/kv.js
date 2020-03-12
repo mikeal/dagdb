@@ -76,32 +76,28 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     all (opts) {
-      opts = { ...opts, ...{ blocks: false } }
+      opts = { ...{ blocks: false }, ...opts }
       const get = this.store.get.bind(this.store)
       const iter = async function * (t) {
         const head = await t._getHead()
-        const _iter = hamt.all(head, get)
-        for (const [key, block] of t.cache.entries()) {
+        for (const [key, [,block]] of t.cache.entries()) {
+          if (!block) continue
           if (opts.blocks) yield [key, block]
           else yield [key, await block.cid()]
         }
-        for await (const [key, cid] of _iter) {
+        const _iter = hamt.all(head, get)
+        for await (let { key, value } of _iter) {
+          key = key.toString()
           if (!t.cache.has(key)) {
-            if (opts.blocks) yield [key, await get(cid)]
-            else yield [key, cid]
+            if (opts.blocks) yield [key, await get(value)]
+            else yield [key, value]
           }
         }
       }
       return iter(this)
     }
 
-    commit () {
-      if (this.spent) return this.spent
-      readonly(this, 'spent', this._commit())
-      return this.spent
-    }
-
-    async _commit () {
+    async commit () {
       const root = this.root
       const ops = []
       const pending = []
