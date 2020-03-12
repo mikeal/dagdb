@@ -2,7 +2,6 @@ const hamt = require('./hamt')
 const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
 
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
-const lastWins = (old, latest) => latest
 
 const createGet = (local, remote) => {
   const cache = new Map()
@@ -80,7 +79,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       opts = { ...{ blocks: false }, ...opts }
       const get = this.store.get.bind(this.store)
       const iter = async function * (t) {
-        const head = await t._getHead()
+        const head = await t.getHead()
         for (const [key, [, block]] of t.cache.entries()) {
           if (!block) continue
           if (opts.blocks) yield [key, block]
@@ -127,15 +126,19 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return null
     }
 
-    async _getHead () {
+    async getRootTransaction () {
       const root = await this.store.get(this.root)
-      const head = fromBlock(root, 'Transaction')['kv-v1'].head
-      return head
+      return fromBlock(root, 'Transaction')
+    }
+
+    async getHead () {
+      const root = await this.getRootTransaction()
+      return root['kv-v1'].head
     }
 
     async getBlock (key) {
       if (this.__get(key)) return this.__get(key)
-      const head = await this._getHead()
+      const head = await this.getHead()
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) throw new NotFound(`No key named "${key}"`)
       const block = await this.store.get(link)
@@ -150,11 +153,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return block.decode()
     }
 
-    async pull (trans, resolver=noResolver) {
+    async pull (trans, resolver = noResolver) {
       // we need to make all the cached blocks accessible
       // to the resolver
       const _blocks = new Map()
-      for (const [,block] of this.cache.values()) {
+      for (const [, block] of this.cache.values()) {
         if (block) _blocks.set(await block.cid().then(cid => cid.toString('base64')), block)
       }
       const local = async cid => {
@@ -171,13 +174,13 @@ module.exports = (Block, codec = 'dag-cbor') => {
       // into the local cache for the transaction
       for (const [key, [op, block]] of staged.entries()) {
         if (this.cache.has(key)) {
-          const [ old ] = this.cache.get(key)
+          const [old] = this.cache.get(key)
           const cid = await old.cid()
           if (cid.equals(await op.cid())) continue
           const newOp = await resolver([old], [op], stackedGet)
           const decoded = newOp.decodeUnsafe()
-          const value = [ newOp ]
-          if (decoded.set) value.push(await get(decoded.set.val))
+          const value = [newOp]
+          if (decoded.set) value.push(await stackedGet(decoded.set.val))
           this.cache.set(key, value)
         } else {
           this.cache.set(key, [op, block])

@@ -51,4 +51,23 @@ test('pull only latest change to key', async () => {
   assert.ok(one.root.equals(two.root))
   await one.pull(two)
   same(one.cache.size, 0)
+
+  // test longer history reconciliation
+  await one.set('test2', { foo: 2 })
+  one = await one.commit()
+  await two.set('test2', { foo: 1 })
+  two = await two.commit()
+  await two.set('test2', { foo: 2 })
+  two = await two.commit()
+  await two.set('test2', { foo: 3 })
+  two = await two.commit()
+  await await one.pull(two)
+  same(one.cache.size, 1)
+  same(await one.get('test2'), { foo: 3 })
+  one = await one.commit()
+  // transaction root should not match
+  assert(!one.root.equals(two.root))
+  const head1 = await one.getHead()
+  const head2 = await two.getHead()
+  assert(head1.equals(head2))
 })
