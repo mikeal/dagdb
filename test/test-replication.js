@@ -1,10 +1,9 @@
 const { it } = require('mocha')
 const inmem = require('../src/store/inmemory')
 const { kv } = require('../')
-const bare = require('../bare')
 const test = it
-const same = require('assert').deepStrictEqual
-const Block = require('@ipld/block')
+const assert = require('assert')
+const same = assert.deepStrictEqual
 
 const create = async (_kv = kv) => {
   const store = inmem()
@@ -18,7 +17,7 @@ const basics = async kv => {
   let obj = await kvs.get('test')
   same(obj, { hello: 'world' })
   const root = await kvs.commit()
-  obj = await kvs.get('test')
+  obj = await root.get('test')
   same(obj, { hello: 'world' })
   return root
 }
@@ -30,58 +29,26 @@ test('basic replication', async () => {
   same(await kvs.get('test'), { hello: 'world' })
 })
 
-/*
-test('basic overwrite', async () => {
-  let { store, kvs } = await create()
-  kvs.set('test', { foo: 0 })
-  const head = await kvs.commit()
-  kvs = kv.transaction(head, store)
-  same(await kvs.get('test'), { foo: 0 })
-  await kvs.set('test', { foo: 1 })
-  same(await kvs.get('test'), { foo: 1 })
-  await kvs.commit()
-  same(await kvs.get('test'), { foo: 1 })
+test('deduplication', async () => {
+  let [one, two] = await Promise.all([basics(), basics()])
+  await one.set('test2', { foo: 'bar' })
+  one = await one.commit()
+  await two.set('test2', { foo: 'bar' })
+  await two.pull(one)
+  two = await two.commit()
+  assert.ok(one.root.equals(two.root))
+  await one.pull(two)
+  same(one.cache.size, 0)
 })
 
-test('not found', async () => {
-  const { store, kvs } = await create()
-  try {
-    await kvs.get('test')
-  } catch (e) {
-    if (e.kvs !== 'notfound') {
-      throw e
-    }
-  }
+test('pull only latest change to key', async () => {
+  let [one, two] = await Promise.all([basics(), basics()])
+  await one.set('test2', { foo: 'bar' })
+  one = await one.commit()
+  await two.set('test2', { foo: 'bar' })
+  await two.pull(one)
+  two = await two.commit()
+  assert.ok(one.root.equals(two.root))
+  await one.pull(two)
+  same(one.cache.size, 0)
 })
-
-const notfound = async (kvs, key) => {
-  try {
-    await kvs.get(key)
-  } catch (e) {
-    if (e.status !== 404) {
-      throw e
-    }
-    return null
-  }
-  throw new Error(`Found ${key}`)
-}
-
-test('basic removal', async () => {
-  let { store, kvs } = await create()
-  kvs.set('test', { foo: 0 })
-  const head = await kvs.commit()
-  kvs = kv.transaction(head, store)
-  same(await kvs.get('test'), { foo: 0 })
-  kvs.del('test')
-  await notfound(kvs, 'test')
-  const next = await kvs.commit()
-  await notfound(kvs, 'test')
-  kvs = kv.transaction(next, store)
-  await notfound(kvs, 'test')
-})
-
-test('custom codec', async () => {
-  const { kv } = bare(Block, 'dag-json')
-  await basics(kv)
-})
-*/

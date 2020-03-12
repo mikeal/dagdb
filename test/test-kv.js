@@ -33,7 +33,7 @@ test('basic set/get', async () => {
 })
 
 test('basic overwrite', async () => {
-  let { store, kvs } = await create()
+  let { kvs } = await create()
   await kvs.set('test', { foo: 0 })
   kvs = await kvs.commit()
   same(await kvs.get('test'), { foo: 0 })
@@ -44,7 +44,7 @@ test('basic overwrite', async () => {
 })
 
 test('not found', async () => {
-  const { store, kvs } = await create()
+  const { kvs } = await create()
   try {
     await kvs.get('test')
   } catch (e) {
@@ -67,7 +67,7 @@ const notfound = async (kvs, key) => {
 }
 
 test('basic removal', async () => {
-  let { store, kvs } = await create()
+  let { kvs } = await create()
   await kvs.set('test', { foo: 0 })
   kvs = await kvs.commit()
   same(await kvs.get('test'), { foo: 0 })
@@ -91,7 +91,7 @@ test('iter over all in db', async () => {
     same(key, 'test')
     assert.ok(link.equals(await hello.cid()))
   }
-  for await (const [key, block] of kvs.all({blocks:true})) {
+  for await (const [key, block] of kvs.all({ blocks: true })) {
     assert.ok(Block.isBlock(block))
     same(key, 'test')
     assert.ok((await block.cid()).equals(await block.cid()))
@@ -105,7 +105,7 @@ test('iter over all in db', async () => {
     _link = link
     assert.ok(link.equals(await block.cid()))
   }
-  for await (const [key, block] of kvs.all({blocks: true})) {
+  for await (const [key, block] of kvs.all({ blocks: true })) {
     if (key === 'test') continue
     same(key, 'test2')
     assert.ok(_link.equals(await block.cid()))

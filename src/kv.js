@@ -1,6 +1,7 @@
 const hamt = require('./hamt')
 const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
 
+const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 const lastWins = (old, latest) => latest
 
 const createGet = (local, remote) => {
@@ -80,7 +81,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const get = this.store.get.bind(this.store)
       const iter = async function * (t) {
         const head = await t._getHead()
-        for (const [key, [,block]] of t.cache.entries()) {
+        for (const [key, [, block]] of t.cache.entries()) {
           if (!block) continue
           if (opts.blocks) yield [key, block]
           else yield [key, await block.cid()]
@@ -149,47 +150,93 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return block.decode()
     }
 
-    async pull (trans, reconcile, conflictResolve = lastWins) {
-      const local = this.store.get.bind(this.store)
+    async pull (trans, resolver=noResolver) {
+      // we need to make all the cached blocks accessible
+      // to the resolver
+      const _blocks = new Map()
+      for (const [,block] of this.cache.values()) {
+        if (block) _blocks.set(await block.cid().then(cid => cid.toString('base64')), block)
+      }
+      const local = async cid => {
+        const key = cid.toString('base64')
+        if (_blocks.has(key)) return _blocks.get(key)
+        return this.store.get(cid)
+      }
       const remote = trans.store.get.bind(trans.store)
       const oldRoot = this.root
       const newRoot = trans.root
-      const staged = await replicate(oldRoot, newRoot, local, remote, reconcile)
-      for (const [key, cached] of staged.entries()) {
+      const stackedGet = createGet(local, remote)
+      const staged = await replicate(oldRoot, newRoot, stackedGet, resolver)
+      // now merge the latest options for each key from the remote
+      // into the local cache for the transaction
+      for (const [key, [op, block]] of staged.entries()) {
         if (this.cache.has(key)) {
-          this.cache.set(key, lastWins(this.cache.get(key), cached))
+          const [ old ] = this.cache.get(key)
+          const cid = await old.cid()
+          if (cid.equals(await op.cid())) continue
+          const newOp = await resolver([old], [op], stackedGet)
+          const decoded = newOp.decodeUnsafe()
+          const value = [ newOp ]
+          if (decoded.set) value.push(await get(decoded.set.val))
+          this.cache.set(key, value)
         } else {
-          this.cache.set(key, cached)
+          this.cache.set(key, [op, block])
         }
       }
     }
   }
 
-  const dedupe = async (oldOps, newOps) => {
-    const ops = new Map()
-    const seen = new Set()
-    const blocks = oldOps.concat(newOps)
-    const keys = await Promise.all(blocks.map(b => b.cid()))
-    // This is wrong.
-    // We should not return all the transactions, we should only
-    // return *new* transactions because all the oldOps are already
-    // applied to the current transaction.
-    for (const block of blocks) {
-      const id = keys.shift().toString('base64')
-      if (seen.has(id)) continue
-      seen.add(id)
+  const noResolver = localOps => {
+    const decoded = localOps[0].decodeUnsafe()
+    const key = getKey(decoded)
+    throw new Error(`Conflict, databases contain conflicting mutations to "${key}" since last common`)
+  }
+  const reconcile = async (oldOps, newOps, get, resolver = noResolver) => {
+    const lastId = ops => ops[ops.length - 1].cid().then(cid => cid.toString('base64'))
+    const staging = new Map()
+    let i = 0
+    const add = block => {
       const decoded = fromBlock(block, 'Operation')
-      const key = decoded.set ? decoded.set.key : decoded.del.key
-      if (ops.has(key)) throw new Error(`Conflict, concurrent over-writes of the same key "${key}"`)
-      ops.set(key, block)
+      const key = getKey(decoded)
+      if (!staging.has(key)) {
+        staging.set(key, [[], []])
+      }
+      const ops = staging.get(key)[i]
+      ops.push(block)
+    }
+    oldOps.forEach(add)
+    i = 1
+    newOps.forEach(add)
+
+    const ops = new Map()
+
+    for (const [key, [oldOps, newOps]] of staging.entries()) {
+      const accept = () => ops.set(key, newOps[newOps.length - 1])
+      // ignore keys that only have local history
+      if (!newOps.length) continue
+      // accept right away if there are no local changes to conflict with
+      if (!oldOps.length) {
+        accept()
+        continue
+      }
+      // check if that last ops match and if so, ignore this key since the
+      // both already have the same value
+      const last = lastId(oldOps)
+      if (last === lastId(newOps)) continue
+      // if the last local operation exists anywhere in the history
+      // of the new ops then we can take that as a common history
+      // point and accept the latest change from the remote
+      const ids = new Set(await Promise.all(newOps.map(block => block.cid().then(cid => cid.toString('base64')))))
+      if (ids.has(last)) {
+        accept()
+      }
+      // there's a conflict, pass it to the resolver
+      ops.set(key, resolver(oldOps, newOps, get))
     }
     return ops
   }
 
-  const replicate = async (oldRoot, newRoot, local, remote, reconcile = dedupe) => {
-    // pushes newRoot (source) to destination's oldRoot
-    const get = createGet(local, remote)
-
+  const replicate = async (oldRoot, newRoot, get, resolver) => {
     if (isCID(oldRoot)) oldRoot = await get(oldRoot)
     if (isCID(newRoot)) newRoot = await get(newRoot)
     const seen = new Set()
@@ -235,7 +282,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const _all = root => since(root).then(ops => Promise.all(Array.from(ops.values())))
 
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
-    const ops = await reconcile(oldOps, newOps)
+    const ops = await reconcile(oldOps, newOps, get, resolver)
     const staged = new Map()
     for (const [key, op] of ops.entries()) {
       const decoded = op.decodeUnsafe()
