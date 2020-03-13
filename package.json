@@ -9,7 +9,7 @@
     "test:node": "mocha test/test-*.js",
     "test": "hundreds npm run test:node",
     "coverage": "nyc --reporter=html mocha test/test-*.js && npx http-server coverage",
-    "build": "ipld-schema to-json Schema.md > src/schema.json"
+    "build:schema": "ipld-schema to-json Schema.md > src/schema.json"
   },
   "repository": {
     "type": "git",

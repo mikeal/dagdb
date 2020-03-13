@@ -97,6 +97,34 @@ value removed from the primary store the index can be updated to reflect
 the new state. The keys are multibase(base64) cid's of the original data
 and the value is the string value for the secondary index key.
 
+# DagDB Type
+
+This is a massive union of all the publicly visible types used by
+DagDB. There are many points where **any** of these types can be
+used as a value. For instance, a `Database` can also be used as
+a value almost anywhere and will be cast into the correct class
+instance when retrieved by user facing APIs.
+
+```sh
+type DagDBTypeV1 union {
+  | &Database "database"
+  | &Transaction "transaction"
+} representation keyed
+
+type DagDBType union {
+  | DagDBTypeV1 "v1"
+} representation keyed
+
+type DagDB struct {
+  type DagDBType (rename "_dagdb")
+}
+```
+
+DagDB's value loader walks decoded blocks and replaces the referenced
+values with instances of the relevant types and validates them against
+the referenced schemas. This effectively means that `"_dagdb"` is a
+reserved key *at any depth* with very few exceptions.
+
 # Database
 
 A `Store` is a set of `Key Value Database`'s.
@@ -114,7 +142,8 @@ to the device/store. Tags typically **are** pushed to a remote.
 ```sh
 type DatabaseV1 struct {
   tags &Transaction
-  indexes &Transaction
+  indexes &Transaction # Values type is Index
+  remotes &Transaction # Values type is Remote
 }
 
 type Database union {

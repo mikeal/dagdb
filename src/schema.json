@@ -186,6 +186,46 @@
         "map": {}
       }
     },
+    "DagDBTypeV1": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "database": {
+            "kind": "link",
+            "expectedType": "Database"
+          },
+          "transaction": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          }
+        }
+      }
+    },
+    "DagDBType": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "v1": "DagDBTypeV1"
+        }
+      }
+    },
+    "DagDB": {
+      "kind": "struct",
+      "fields": {
+        "type": {
+          "type": "DagDBType"
+        }
+      },
+      "representation": {
+        "map": {
+          "fields": {
+            "type": {
+              "rename": "_dagdb"
+            }
+          }
+        }
+      }
+    },
     "DatabaseV1": {
       "kind": "struct",
       "fields": {
@@ -196,6 +236,12 @@
           }
         },
         "indexes": {
+          "type": {
+            "kind": "link",
+            "expectedType": "Transaction"
+          }
+        },
+        "remotes": {
           "type": {
             "kind": "link",
             "expectedType": "Transaction"
