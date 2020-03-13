@@ -116,3 +116,24 @@ test('iter over all in db', async () => {
     assert.ok(link.equals(await hello.cid()))
   }
 })
+
+test('write a block as a value', async () => {
+  const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
+  let db = await basics()
+  await db.set('testblock', block)
+  same(await db.get('testblock'), { hello: 'world' })
+  db = await db.commit()
+  same(await db.get('testblock'), { hello: 'world' })
+})
+
+test('commit no transactions', async () => {
+  const db = await basics()
+  let threw = true
+  try {
+    await db.commit()
+    threw = false
+  } catch (e) {
+    if (!e.message.startsWith('There are no pending operations to commit')) throw e
+  }
+  assert.ok(threw)
+})

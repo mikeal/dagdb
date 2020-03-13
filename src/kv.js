@@ -20,6 +20,8 @@ const createGet = (local, remote) => {
       _cache(ret)
       return ret
     }
+    // final cache check, useful under concurrent load
+    // istanbul ignore next
     if (cache.has(key)) return cache.get(key)
     const block = await remote(cid)
     _cache(block)
@@ -32,7 +34,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
-    const rootBlock = Block.isBlock(root) ? root : await get(root)
+    const rootBlock = await get(root)
     const kvt = fromBlock(rootBlock, 'Transaction')
 
     const opLinks = []
@@ -47,6 +49,12 @@ module.exports = (Block, codec = 'dag-cbor') => {
       last = block
       yield block
     }
+    // this happens when there are bugs elsewhere so
+    // it's not really possible to test for, but it's
+    // an important guard because it protects us from
+    // inserting an empty transaction head when there
+    // are other bugs
+    // istanbul ignore next
     if (!last) throw new Error('nothing from hamt')
 
     const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
@@ -63,14 +71,12 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async set (key, block) {
-      if (this.spent) throw new Error('Transaction already commited')
       if (!isBlock(block)) block = Block.encoder(block, codec)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
     }
 
     async del (key) {
-      if (this.spent) throw new Error('Transaction already commited')
       const op = toBlock({ del: { key } }, 'Operation')
       this.cache.set(key, [op])
     }
@@ -144,6 +150,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
+      // istanbul ignore next
       if (this.__get(key)) return this.__get(key)
       return block
     }
@@ -320,3 +327,4 @@ module.exports = (Block, codec = 'dag-cbor') => {
   }
   return exports
 }
+module.exports.createGet = createGet
