@@ -1,6 +1,6 @@
 {
   "name": "dagdb",
-  "version": "0.0.0",
+  "version": "0.0.0-dev",
   "description": "Syncable large scale database built on IPLD",
   "main": "src/index.js",
   "scripts": {
