@@ -1,4 +1,4 @@
-const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
+const { fromBlock, validate } = require('./utils')
 const createKV = require('./kv')
 
 module.exports = (Block, codec = 'dag-cbor') => {

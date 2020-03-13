@@ -116,4 +116,3 @@ test('iter over all in db', async () => {
     assert.ok(link.equals(await hello.cid()))
   }
 })
-

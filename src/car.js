@@ -1,8 +1,9 @@
-const { stat } = require('fs').promises
+const { stat, rename } = require('fs').promises
 const carfile = require('datastore-car')
 const inmem = require('./store/inmemory')
 const Block = require('@ipld/block')
 const database = require('./database')(Block)
+const path = require('path')
 
 const getRoot = async car => {
   const [root, ...nope] = await car.getRoots()
@@ -19,8 +20,11 @@ const loadReadOnly = async filename => {
   const store = { get: cid => car.get(cid).then(data => Block.create(data, cid)) }
   return database(root, store)
 }
+const loadWritable = async filename => {
+}
 
 exports.loadReadOnly = loadReadOnly
+exports.loadWritable = loadWritable
 exports.options = yargs => {
   yargs.option('dbfile', {
     desc: 'File containing the database',
@@ -45,11 +49,11 @@ const checkfile = async file => {
   return exists
 }
 
-const traverse = async function * (cid, get, seen=new Set()) {
+const traverse = async function * (cid, get, seen = new Set()) {
   const block = await get(cid)
   yield block
   seen.add(cid.toString('base64'))
-  for (const [path, link] of block.reader().links()) {
+  for (const [, link] of block.reader().links()) {
     if (seen.has(link.toString('base64'))) continue
     yield * traverse(link, get, seen)
   }
@@ -73,7 +77,7 @@ const readwrite = async (filename, exportFile) => {
   const write = async newRoot => {
     const dir = path.dirname(filename)
     const base = path.basename(filename)
-    const f = path.join(dir, '.tmp'. + base)
+    const f = path.join(dir, '.tmp.' + base)
     const writer = await loadWritable(f)
     await writer.setRoots([newRoot])
     for await (const block of traverse(newRoot, get)) {
@@ -87,3 +91,4 @@ const readwrite = async (filename, exportFile) => {
 }
 
 exports.checkfile = checkfile
+exports.readwrite = readwrite
