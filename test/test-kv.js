@@ -54,34 +54,28 @@ test('not found', async () => {
   }
 })
 
-const notfound = async (kvs, key) => {
-  try {
-    await kvs.get(key)
-  } catch (e) {
-    if (e.status !== 404) {
-      throw e
-    }
-    return null
-  }
-  throw new Error(`Found ${key}`)
-}
-
 test('basic removal', async () => {
   let { kvs } = await create()
   await kvs.set('test', { foo: 0 })
+  same(await kvs.has('test'), true)
   kvs = await kvs.commit()
   same(await kvs.get('test'), { foo: 0 })
   await kvs.del('test')
-  await notfound(kvs, 'test')
-  const next = await kvs.commit()
-  await notfound(kvs, 'test')
-  kvs = next
-  await notfound(kvs, 'test')
+  same(await kvs.has('test'), false)
+  kvs = await kvs.commit()
+  same(await kvs.has('test'), false)
 })
 
 test('custom codec', async () => {
   const { kv } = bare(Block, 'dag-json')
   await basics(kv)
+  let store = await kv.create(inmem())
+  await store.set('test', { x: 1 })
+  store = await store.commit()
+  same(await store.get('test'), { x: 1 })
+  same(store.root.codec, 'dag-json')
+  store = kv(store.root, store.store)
+  same(await store.get('test'), { x: 1 })
 })
 
 test('iter over all in db', async () => {
@@ -122,3 +116,4 @@ test('iter over all in db', async () => {
     assert.ok(link.equals(await hello.cid()))
   }
 })
+

@@ -5,11 +5,11 @@ const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
 const createGet = (local, remote) => {
   const cache = new Map()
-  const _cache = (key, block) => cache.set(key, block)
   const get = async cid => {
     if (!isCID(cid)) throw new Error('Must be CID')
     const key = cid.toString('base64')
     if (cache.has(key)) return cache.get(key)
+    const _cache = (block) => cache.set(key, block)
     let ret
     try {
       ret = await local(cid)
@@ -17,12 +17,12 @@ const createGet = (local, remote) => {
       // noop
     }
     if (ret) {
-      _cache(await ret.cid(), ret)
+      _cache(ret)
       return ret
     }
     if (cache.has(key)) return cache.get(key)
     const block = await remote(cid)
-    _cache(key, block)
+    _cache(block)
     return block
   }
   return get
@@ -43,7 +43,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     let last
-    for await (const block of hamt.bulk(Block, get, kvt['kv-v1'].head, opDecodes, codec)) {
+    for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block, codec)) {
       last = block
       yield block
     }
@@ -206,7 +206,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const key = getKey(decoded)
     throw new Error(`Conflict, databases contain conflicting mutations to "${key}" since last common`)
   }
-  const reconcile = async (oldOps, newOps, get, resolver = noResolver) => {
+  const reconcile = async (oldOps, newOps, get, resolver) => {
     const lastId = ops => ops[ops.length - 1].cid().then(cid => cid.toString('base64'))
     const staging = new Map()
     let i = 0
@@ -236,14 +236,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
       // check if that last ops match and if so, ignore this key since the
       // both already have the same value
-      const last = lastId(oldOps)
-      if (last === lastId(newOps)) continue
+      const last = await lastId(oldOps)
+      if (last === await lastId(newOps)) continue
       // if the last local operation exists anywhere in the history
       // of the new ops then we can take that as a common history
       // point and accept the latest change from the remote
       const ids = new Set(await Promise.all(newOps.map(block => block.cid().then(cid => cid.toString('base64')))))
       if (ids.has(last)) {
         accept()
+        continue
       }
       // there's a conflict, pass it to the resolver
       ops.set(key, resolver(oldOps, newOps, get))
@@ -252,8 +253,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
   }
 
   const replicate = async (oldRoot, newRoot, get, resolver) => {
-    if (isCID(oldRoot)) oldRoot = await get(oldRoot)
-    if (isCID(newRoot)) newRoot = await get(newRoot)
+    oldRoot = await get(oldRoot)
+    newRoot = await get(newRoot)
     const seen = new Set()
 
     const find = root => {
@@ -280,21 +281,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
     const common = await race()
     if (!common) throw new Error('No common root between databases')
 
-    const since = async (trans, _ops = new Map()) => {
+    const since = async (trans, _ops = []) => {
       const decoded = fromBlock(trans, 'Transaction')
       let { head, prev, ops } = decoded['kv-v1']
       if (head.equals(common)) return _ops
-      ops = await Promise.all(ops.map(op => get(op)))
-      for (const block of ops) {
-        const op = fromBlock(block, 'Operation')
-        const key = op.set ? op.set.key : op.del.key
-        if (!_ops.has(key)) _ops.set(key, block)
-      }
-
-      return since(await get(prev), _ops)
+      ops = ops.map(op => get(op))
+      return since(await get(prev), [...ops, ..._ops])
     }
 
-    const _all = root => since(root).then(ops => Promise.all(Array.from(ops.values())))
+    const _all = root => since(root).then(ops => Promise.all(ops))
 
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
     const ops = await reconcile(oldOps, newOps, get, resolver)
@@ -317,14 +312,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const KVT = KeyValueTransaction
   const exports = (...args) => new KVT(...args)
   exports.empties = [empty, emptyHamt]
-  exports.open = (root, store) => new KVT(root, store)
   exports.create = async store => {
     const _empty = await empty
     await Promise.all([store.put(_empty), store.put(emptyHamt)])
     const root = await _empty.cid()
     return new KeyValueTransaction(root, store)
   }
-  exports.transaction = (root, store) => new KVT(root, store)
-  exports.replicate = replicate
   return exports
 }

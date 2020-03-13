@@ -17,7 +17,7 @@ const isLink = isCID
 const mkload = get => cid => get(cid).then(block => block.decode())
 const store = { isEqual, isLink }
 
-const transaction = async function * (Block, get, head, ops, codec = 'dag-cbor') {
+const transaction = async function * (head, ops, get, Block, codec) {
   const blocks = []
   const save = obj => {
     const block = Block.encoder(obj, codec)
