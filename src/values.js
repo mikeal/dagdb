@@ -1,4 +1,4 @@
-const { readonly, isCID } = require('utils')
+const { readonly, isCID } = require('./utils')
 
 module.exports = (Block, codec) => {
   const decode = (value, get) => {
@@ -24,7 +24,7 @@ module.exports = (Block, codec) => {
           value[i] = decode(value[i], get)
         }
       } else {
-        for (const [key, _value] of Object.values(value)) {
+        for (const [key, _value] of Object.entries(value)) {
           value[key] = decode(_value, get)
         }
       }
@@ -70,7 +70,7 @@ module.exports = (Block, codec) => {
         yield ret
       } else {
         const ret = {}
-        for (const [key, _value] of Object.values(value)) {
+        for (const [key, _value] of Object.entries(value)) {
           let last
           for await (const block of encode(_value)) {
             if (last) throw new Error('Encoder yield after non-block')

@@ -1,6 +1,6 @@
 const hamt = require('./hamt')
 const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
-
+const valueLoader = require('./values')
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
 const createGet = (local, remote) => {
@@ -31,6 +31,7 @@ const createGet = (local, remote) => {
 }
 
 module.exports = (Block, codec = 'dag-cbor') => {
+  const { encode, decode } = valueLoader(Block, codec)
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
@@ -71,9 +72,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async set (key, block) {
-      if (!isBlock(block)) block = Block.encoder(block, codec)
+      const encoderBlocks = []
+      if (!isBlock(block)) {
+        for await (const _block of encode(block)) {
+          encoderBlocks.push(_block)
+        }
+        block = Block.encoder(encoderBlocks.pop(), codec)
+      }
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
-      this.cache.set(key, [op, block])
+      this.cache.set(key, [op, block, ...encoderBlocks])
     }
 
     async del (key) {
@@ -157,7 +164,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       const block = await this.getBlock(key)
-      return block.decode()
+      return decode(block.decode())
     }
 
     async has (key) {
