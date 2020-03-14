@@ -168,14 +168,13 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async has (key) {
-      try {
-        await this.get(key)
-      } catch (e) {
-        if (e.status !== 404) {
-          throw e
-        }
-        return false
+      if (this.cache.has(key)) {
+        if (this.cache.get(key).length === 1) return false
+        return true
       }
+      const head = await this.getHead()
+      const link = await hamt.get(head, key, this.store.get.bind(this.store))
+      if (!link) return false
       return true
     }
 
