@@ -19,4 +19,13 @@ class NotFound extends Error {
   }
 }
 
-module.exports = { NotFound, readonly, isCID, fromBlock, validate }
+const encoderTransaction = async function * (iter) {
+  let last
+  for await (const block of iter) {
+    last = block
+    yield block
+  }
+  yield last.cid()
+}
+
+module.exports = { NotFound, readonly, isCID, fromBlock, validate, encoderTransaction }

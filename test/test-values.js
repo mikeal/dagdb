@@ -74,3 +74,18 @@ test('arrays', async () => {
   same(val[1], { hello: 'world' })
   same(await val[2](), { hello: 'world' })
 })
+
+test('kv in kv', async () => {
+  const db = await basics(kv)
+  await db.set('kvInKv', db)
+  const cid = db.root
+  assert.ok(cid.equals((await db.get('kvInKv')).root))
+  const latest = await db.commit()
+  assert.ok((await latest.get('kvInKv')).root.equals(db.root))
+
+  await db.set('dirty', 'test')
+  await latest.set('with-cache', db)
+  // the latest changes would be commited so it wouldn't
+  // match the old transaction root
+  assert(!db.root.equals(await latest.get('with-cache')))
+})

@@ -1,14 +1,36 @@
-const { readonly, isCID } = require('./utils')
+const { readonly, isCID, validate } = require('./utils')
+const types = {}
 
 module.exports = (Block, codec) => {
-  const decode = (value, get) => {
+  const _typeEncoder = async function * (gen, set) {
+    let last
+    for await (const block of gen) {
+      // testing these guards would require an implementation w/ a schema
+      // for a bad implementation, which would be bad to ship with.
+      // istanbul ignore next
+      if (last) throw new Error('Encoder yield after non-block')
+      if (Block.isBlock(block)) {
+        yield block
+        continue
+      }
+      last = block
+    }
+    // istanbul ignore next
+    if (typeof last === 'undefined') throw new Error('Encoder did not yield a root node')
+    set(last)
+  }
+  const typeEncoder = gen => {
+    const encoder = _typeEncoder(gen, last => { encoder.last = last })
+    return encoder
+  }
+  const decode = (value, store) => {
     // decode only accepts IPLD Data Model
     // this method is expected to accept decoded Block data directly
     // and it can't work with any special types.
     if (isCID(value)) {
       const getter = async () => {
         if (getter.block) return getter.block
-        const block = await get(value)
+        const block = await store.get(value)
         readonly(getter, 'block', block)
         return decode(block.decodeUnsafe())
       }
@@ -17,15 +39,16 @@ module.exports = (Block, codec) => {
     }
     if (typeof value === 'object') {
       if (value._dagdb) {
-        // TODO: special objects
-        return value
+        validate(value, 'DagDB')
+        const type = Object.keys(value._dagdb.v1)[0]
+        return types[type](value._dagdb.v1[type], store)
       } else if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++) {
-          value[i] = decode(value[i], get)
+          value[i] = decode(value[i], store)
         }
       } else {
         for (const [key, _value] of Object.entries(value)) {
-          value[key] = decode(_value, get)
+          value[key] = decode(_value, store)
         }
       }
     }
@@ -57,48 +80,33 @@ module.exports = (Block, codec) => {
       yield value
     } else {
       if (value._dagdb) {
-        // TODO: special objects
-        yield * value.encode()
-        return value
+        const encoder = typeEncoder(value.encode())
+        yield * encoder
+        const type = value._dagdb.v1
+        const typeDef = {}
+        typeDef[type] = encoder.last
+        yield { _dagdb: { v1: typeDef } }
       } else if (Array.isArray(value)) {
         const ret = []
         for (let i = 0; i < value.length; i++) {
-          let last
-          for await (const block of encode(value[i])) {
-            // testing these guards would require an implementation w/ a schema
-            // for a bad implementation, which would be bad to ship with.
-            // istanbul ignore next
-            if (last) throw new Error('Encoder yield after non-block')
-            if (Block.isBlock(block)) {
-              yield block
-              continue
-            }
-            last = block
-          }
-          // istanbul ignore next
-          if (!last) throw new Error('Encoder did not yield a root node')
-          ret[i] = await last
+          const encoder = typeEncoder(encode(value[i]))
+          yield * encoder
+          ret[i] = await encoder.last
         }
         yield ret
       } else {
         const ret = {}
         for (const [key, _value] of Object.entries(value)) {
-          let last
-          for await (const block of encode(_value)) {
-            // istanbul ignore next
-            if (last) throw new Error('Encoder yield after non-block')
-            if (Block.isBlock(block)) {
-              yield block
-              continue
-            }
-            last = block
-          }
-          ret[key] = await last
+          const encoder = typeEncoder(encode(_value))
+          yield * encoder
+          ret[key] = await encoder.last
         }
         yield ret
       }
     }
   }
 
-  return { encode, decode }
+  const register = (type, fn) => { types[type] = fn }
+
+  return { encode, decode, register }
 }

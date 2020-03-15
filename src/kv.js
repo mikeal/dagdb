@@ -1,5 +1,9 @@
 const hamt = require('./hamt')
-const { NotFound, readonly, isCID, fromBlock, validate } = require('./utils')
+const {
+  NotFound, readonly, isCID,
+  fromBlock, validate,
+  encoderTransaction
+} = require('./utils')
 const valueLoader = require('./values')
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
@@ -31,7 +35,7 @@ const createGet = (local, remote) => {
 }
 
 module.exports = (Block, codec = 'dag-cbor') => {
-  const { encode, decode } = valueLoader(Block, codec)
+  const { encode, decode, register } = valueLoader(Block, codec)
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
@@ -64,11 +68,27 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   const isBlock = v => Block.isBlock(v)
 
-  class KeyValueTransaction {
+  const commitTransaction = async function * (trans) {
+    const root = trans.root
+    const ops = []
+    for (const [op, ...blocks] of trans.cache.values()) {
+      ops.push(op)
+      yield op
+      yield * blocks
+    }
+    if (!ops.length) throw new Error('There are no pending operations to commit')
+    yield * commitKeyValueTransaction(ops, root, trans.store.get.bind(trans.store))
+  }
+
+  class Transaction {
     constructor (root, store) {
       readonly(this, 'root', root)
       this.store = store
       this.cache = new Map()
+    }
+
+    get _dagdb () {
+      return { v1: 'transaction' }
     }
 
     async set (key, block) {
@@ -110,24 +130,21 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return iter(this)
     }
 
+    encode () {
+      if (!this.cache.size) return (async function * (r) { yield r })(this.root)
+      return encoderTransaction(commitTransaction(this))
+    }
+
     async commit () {
-      const root = this.root
-      const ops = []
       const pending = []
-      for (const [op, block] of this.cache.values()) {
-        ops.push(op)
-        pending.push(this.store.put(op))
-        if (block) pending.push(this.store.put(block))
-      }
-      if (!ops.length) throw new Error('There are no pending operations to commit')
-      const _commit = commitKeyValueTransaction(ops, root, this.store.get.bind(this.store))
+      const _commit = commitTransaction(this)
       let last
       for await (const block of _commit) {
         last = block
         pending.push(this.store.put(block))
       }
-      await Promise.all([...pending])
-      return new KeyValueTransaction(await last.cid(), this.store)
+      await Promise.all(pending)
+      return new Transaction(await last.cid(), this.store)
     }
 
     __get (key) {
@@ -164,7 +181,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       const block = await this.getBlock(key)
-      return decode(block.decode(), this.store.get.bind(this.store))
+      return decode(block.decode(), this.store)
     }
 
     async has (key) {
@@ -322,15 +339,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const emptyData = emptyHamt.cid().then(head => ({ 'kv-v1': { head, ops: [], prev: null } }))
   const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 
-  const KVT = KeyValueTransaction
-  const exports = (...args) => new KVT(...args)
+  const exports = (...args) => new Transaction(...args)
   exports.empties = [empty, emptyHamt]
   exports.create = async store => {
     const _empty = await empty
     await Promise.all([store.put(_empty), store.put(emptyHamt)])
     const root = await _empty.cid()
-    return new KeyValueTransaction(root, store)
+    return new Transaction(root, store)
   }
+  register('transaction', exports)
   return exports
 }
 module.exports.createGet = createGet
