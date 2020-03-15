@@ -164,7 +164,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       const block = await this.getBlock(key)
-      return decode(block.decode())
+      return decode(block.decode(), this.store.get.bind(this.store))
     }
 
     async has (key) {

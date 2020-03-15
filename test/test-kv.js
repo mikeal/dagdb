@@ -80,6 +80,7 @@ test('custom codec', async () => {
 
 test('iter over all in db', async () => {
   const kvs = await basics()
+  assert.ok(await kvs.has('test'))
   for await (const [key, link] of kvs.all()) {
     assert.ok(isCID(link))
     same(key, 'test')

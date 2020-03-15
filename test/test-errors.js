@@ -71,3 +71,27 @@ test('no common root', async () => {
   }
   assert.ok(threw)
 })
+
+test('not found', async () => {
+  const db = await basics()
+  let threw = true
+  try {
+    await db.get('notfound')
+    threw = false
+  } catch (e) {
+    const match = 'No key named "notfound"'
+    if (e.message !== match) throw e
+    if (e.status !== 404) throw e
+  }
+  assert.ok(threw)
+  await db.del('test')
+  try {
+    await db.get('test')
+    threw = false
+  } catch (e) {
+    const match = 'No key named "test"'
+    if (e.message !== match) throw e
+    if (e.status !== 404) throw e
+  }
+  assert.ok(threw)
+})
