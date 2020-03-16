@@ -80,15 +80,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
     yield * commitKeyValueTransaction(ops, root, trans.store.get.bind(trans.store))
   }
 
-  class Transaction {
+  class KV {
     constructor (root, store) {
       readonly(this, 'root', root)
       this.store = store
       this.cache = new Map()
-    }
-
-    get _dagdb () {
-      return { v1: 'transaction' }
     }
 
     async set (key, block) {
@@ -130,23 +126,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return iter(this)
     }
 
-    encode () {
-      if (!this.cache.size) return (async function * (r) { yield r })(this.root)
-      return encoderTransaction(commitTransaction(this))
-    }
-
-    async commit () {
-      const pending = []
-      const _commit = commitTransaction(this)
-      let last
-      for await (const block of _commit) {
-        last = block
-        pending.push(this.store.put(block))
-      }
-      await Promise.all(pending)
-      return new Transaction(await last.cid(), this.store)
-    }
-
     __get (key) {
       if (this.cache.has(key)) {
         const [, block] = this.cache.get(key)
@@ -159,11 +138,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async getRootTransaction () {
       const root = await this.store.get(this.root)
       return fromBlock(root, 'Transaction')
-    }
-
-    async getHead () {
-      const root = await this.getRootTransaction()
-      return root['kv-v1'].head
     }
 
     async getBlock (key) {
@@ -193,6 +167,44 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) return false
       return true
+    }
+
+    async size () {
+      let i = 0
+      const reader = this.all()
+      while (true) {
+        const { done } = await reader.next()
+        if (done) return i
+        i++
+      }
+    }
+  }
+
+  class Transaction extends KV {
+    get _dagdb () {
+      return { v1: 'transaction' }
+    }
+
+    encode () {
+      if (!this.cache.size) return (async function * (r) { yield r })(this.root)
+      return encoderTransaction(commitTransaction(this))
+    }
+
+    async commit () {
+      const pending = []
+      const _commit = commitTransaction(this)
+      let last
+      for await (const block of _commit) {
+        last = block
+        pending.push(this.store.put(block))
+      }
+      await Promise.all(pending)
+      return new Transaction(await last.cid(), this.store)
+    }
+
+    async getHead () {
+      const root = await this.getRootTransaction()
+      return root['kv-v1'].head
     }
 
     async pull (trans, resolver = noResolver) {
@@ -340,6 +352,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 
   const exports = (...args) => new Transaction(...args)
+  exports.KV = KV
   exports.empties = [empty, emptyHamt]
   exports.create = async store => {
     const _empty = await empty

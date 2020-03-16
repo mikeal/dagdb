@@ -27,6 +27,7 @@ const init = async argv => {
   const putBlock = block => block.cid().then(cid => car.put(cid, block.encodeUnsafe()))
   await Promise.all(empties.map(putBlock))
   await car.close()
+  console.log(`Initialized empty database in ${argv.dbfile}`)
 }
 exports.handler = init
 exports.desc = 'Create initial db file'

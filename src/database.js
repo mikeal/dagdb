@@ -1,4 +1,4 @@
-const { fromBlock, validate } = require('./utils')
+const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
 
 module.exports = (Block, codec = 'dag-cbor') => {
@@ -9,28 +9,47 @@ module.exports = (Block, codec = 'dag-cbor') => {
     constructor (root, store) {
       this.root = root
       this.store = store
+      readonly(this, '_kv', this.getRoot().then(root => kv(root['db-v1'].kv, store)))
     }
 
-    tags () {
-      const iter = async function * (self) {
-        const db = await fromBlock(await self.store.get(self.root), 'Database')
-        const trans = db['db-v1'].tags
-        const kvs = kv(trans, self.store)
-        for await (const [tag, _kv] of kvs.all()) {
-          console.log({ tag, _kv })
-        }
+    kv () { return this._kv }
+
+    async _getRoot () {
+      if (!this._rootBlock) {
+        this._rootBlock = this.store.get(this.root)
       }
-      return iter(this)
+      const block = await this._rootBlock
+      return fromBlock(block, 'Database')
+    }
+
+    getRoot () {
+      if (!this._rootDecode) this._rootDecode = this._getRoot()
+      return this._rootDecode
+    }
+
+    async info () {
+      const [kv, remotes, indexes] = Promise.all([this.kv(), this.remotes(), this.indexes()])
+      const [kSize, rSize, iSize] = Promise.all([kv.size(), remotes.size(), indexes.size()])
+      return { kv, remotes, indexes, kSize, rSize, iSize }
+    }
+
+    get (...args) {
+      return this._kv.then(kv => kv.get(...args))
+    }
+
+    set (...args) {
+      return this._kv.then(kv => kv.set(...args))
     }
   }
 
   const exports = (...args) => new Database(...args)
 
   // empty database
-  const [emptyKV] = kv.empties
-  const empty = emptyKV.then(block => block.cid().then(cid => {
-    return toBlock({ 'db-v1': { tags: cid, indexes: cid } }, 'Database')
-  }))
+  const empty = (async () => {
+    const [kvBlock, hamtBlock] = await Promise.all(kv.empties)
+    const [kvCID, hamtCID] = await Promise.all([kvBlock.cid(), hamtBlock.cid()])
+    return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes: hamtCID } }, 'Database')
+  })()
   exports.empties = [empty, ...kv.empties]
 
   exports.open = (root, store) => new Database(root, store)

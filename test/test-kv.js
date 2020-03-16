@@ -138,3 +138,16 @@ test('commit no transactions', async () => {
   }
   assert.ok(threw)
 })
+
+test('size', async () => {
+  const db = await basics()
+  same(await db.size(), 1)
+  await db.set('test1', { hello: 'world' })
+  same(await db.size(), 2)
+  await db.set('test2', { hello: 'world' })
+  same(await db.size(), 3)
+  await db.del('test')
+  same(await db.size(), 2)
+  await db.del('missing')
+  same(await db.size(), 2)
+})

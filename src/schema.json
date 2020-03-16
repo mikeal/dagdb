@@ -229,7 +229,7 @@
     "DatabaseV1": {
       "kind": "struct",
       "fields": {
-        "tags": {
+        "kv": {
           "type": {
             "kind": "link",
             "expectedType": "Transaction"
@@ -238,13 +238,13 @@
         "indexes": {
           "type": {
             "kind": "link",
-            "expectedType": "Transaction"
+            "expectedType": "HashMapRoot"
           }
         },
         "remotes": {
           "type": {
             "kind": "link",
-            "expectedType": "Transaction"
+            "expectedType": "HashMapRoot"
           }
         }
       },

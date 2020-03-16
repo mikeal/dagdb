@@ -141,9 +141,9 @@ to the device/store. Tags typically **are** pushed to a remote.
 
 ```sh
 type DatabaseV1 struct {
-  tags &Transaction
-  indexes &Transaction # Values type is Index
-  remotes &Transaction # Values type is Remote
+  kv &Transaction
+  indexes &HashMapRoot # Values type is Index
+  remotes &HashMapRoot # Values type is Remote
 }
 
 type Database union {

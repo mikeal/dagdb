@@ -7,6 +7,7 @@
     "lint": "standard",
     "pretest": "npm run lint",
     "test:node": "mocha test/test-*.js",
+    "test:cli": "tap test/cli/test-*.js",
     "test": "hundreds npm run test:node",
     "coverage": "nyc --reporter=html mocha test/test-*.js && npx http-server coverage",
     "build:schema": "ipld-schema to-json Schema.md > src/schema.json"
@@ -33,6 +34,7 @@
   "devDependencies": {
     "hundreds": "0.0.2",
     "mocha": "^7.1.0",
-    "standard": "^14.3.2"
+    "standard": "^14.3.2",
+    "tap": "^14.10.6"
   }
 }

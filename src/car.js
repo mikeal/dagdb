@@ -28,7 +28,7 @@ exports.loadWritable = loadWritable
 exports.options = yargs => {
   yargs.option('dbfile', {
     desc: 'File containing the database',
-    default: './.dagdb.car'
+    default: '.dagdb.car'
   })
 }
 const checkfile = async file => {
@@ -92,3 +92,4 @@ const readwrite = async (filename, exportFile) => {
 
 exports.checkfile = checkfile
 exports.readwrite = readwrite
+exports.readonly = loadReadOnly
