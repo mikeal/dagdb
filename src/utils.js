@@ -1,6 +1,7 @@
 const schema = require('./schema.json')
 const validate = require('ipld-schema-validation')(schema)
-const fromBlock = (block, className) => validate(block.decodeUnsafe(), className)
+const fromBlock = (block, className) => validate(block.decode(), className)
+const fromBlockUnsafe = (block, className) => validate(block.decodeUnsafe(), className)
 
 const cidSymbol = Symbol.for('@ipld/js-cid/CID')
 const isCID = node => !!(node && node[cidSymbol])
@@ -28,4 +29,4 @@ const encoderTransaction = async function * (iter) {
   yield last.cid()
 }
 
-module.exports = { NotFound, readonly, isCID, fromBlock, validate, encoderTransaction }
+module.exports = { NotFound, readonly, isCID, fromBlock, fromBlockUnsafe, validate, encoderTransaction }

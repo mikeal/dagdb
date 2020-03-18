@@ -32,7 +32,7 @@ module.exports = (Block, codec) => {
         if (getter.block) return getter.block
         const block = await store.get(value)
         readonly(getter, 'block', block)
-        return decode(block.decodeUnsafe())
+        return decode(block.decode())
       }
       readonly(getter, 'cid', value)
       return getter

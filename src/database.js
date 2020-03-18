@@ -7,38 +7,42 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   class Database {
     constructor (root, store) {
-      this.root = root
+      readonly(this, 'root', root)
       this.store = store
-      readonly(this, '_kv', this.getRoot().then(root => kv(root['db-v1'].kv, store)))
+      readonly(this, '_kv', this.getRoot().then(r => kv(r['db-v1'].kv, store)))
     }
 
-    kv () { return this._kv }
+    async commit () {
+      const kv = await this._kv
+      const latest = await kv.commit()
+      const root = await this.getRoot()
+      root['db-v1'].kv = latest.root
+      const block = toBlock(root, 'Database')
+      await this.store.put(block)
+      return new Database(await block.cid(), this.store)
+    }
 
-    async _getRoot () {
+    async get (...args) {
+      const kv = await this._kv
+      return kv.get(...args)
+    }
+
+    async set (...args) {
+      const kv = await this._kv
+      return kv.set(...args)
+    }
+
+    async getRoot () {
       if (!this._rootBlock) {
-        this._rootBlock = this.store.get(this.root)
+        readonly(this, '_rootBlock', this.store.get(this.root))
       }
       const block = await this._rootBlock
       return fromBlock(block, 'Database')
     }
 
-    getRoot () {
-      if (!this._rootDecode) this._rootDecode = this._getRoot()
-      return this._rootDecode
-    }
-
     async info () {
-      const [kv, remotes, indexes] = Promise.all([this.kv(), this.remotes(), this.indexes()])
-      const [kSize, rSize, iSize] = Promise.all([kv.size(), remotes.size(), indexes.size()])
-      return { kv, remotes, indexes, kSize, rSize, iSize }
-    }
-
-    get (...args) {
-      return this._kv.then(kv => kv.get(...args))
-    }
-
-    set (...args) {
-      return this._kv.then(kv => kv.set(...args))
+      const kv = await this._kv
+      return { size: await kv.size() }
     }
   }
 
@@ -51,11 +55,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes: hamtCID } }, 'Database')
   })()
   exports.empties = [empty, ...kv.empties]
-
-  exports.open = (root, store) => new Database(root, store)
   exports.create = async store => {
-    await Promise.all(exports.empties.map(p => p.then(block => store.put(block))))
-    const root = await empty.cid()
+    const empties = await Promise.all(exports.empties)
+    await Promise.all(empties.map(b => store.put(b)))
+    const root = await empties[0].cid()
     return new Database(root, store)
   }
   return exports

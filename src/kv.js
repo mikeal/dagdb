@@ -1,7 +1,7 @@
 const hamt = require('./hamt')
 const {
   NotFound, readonly, isCID,
-  fromBlock, validate,
+  fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
 } = require('./utils')
 const valueLoader = require('./values')
@@ -40,7 +40,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
     const rootBlock = await get(root)
-    const kvt = fromBlock(rootBlock, 'Transaction')
+    const kvt = fromBlockUnsafe(rootBlock, 'Transaction')
 
     const opLinks = []
     const opDecodes = []
@@ -80,7 +80,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     yield * commitKeyValueTransaction(ops, root, trans.store.get.bind(trans.store))
   }
 
-  class KV {
+  class Transaction {
     constructor (root, store) {
       readonly(this, 'root', root)
       this.store = store
@@ -178,17 +178,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
         i++
       }
     }
-  }
-
-  class Transaction extends KV {
-    get _dagdb () {
-      return { v1: 'transaction' }
-    }
-
-    encode () {
-      if (!this.cache.size) return (async function * (r) { yield r })(this.root)
-      return encoderTransaction(commitTransaction(this))
-    }
 
     async commit () {
       const pending = []
@@ -200,6 +189,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
       await Promise.all(pending)
       return new Transaction(await last.cid(), this.store)
+    }
+
+    encode () {
+      if (!this.cache.size) return (async function * (r) { yield r })(this.root)
+      return encoderTransaction(commitTransaction(this))
+    }
+
+    get _dagdb () {
+      return { v1: 'transaction' }
     }
 
     async getHead () {
@@ -352,7 +350,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 
   const exports = (...args) => new Transaction(...args)
-  exports.KV = KV
   exports.empties = [empty, emptyHamt]
   exports.create = async store => {
     const _empty = await empty
