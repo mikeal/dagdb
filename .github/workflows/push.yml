@@ -19,7 +19,7 @@ jobs:
       run: npm test
 
     - name: Docs Build
-    - run: npm run docs:build
+      run: npm run docs:build
     - name: GitHub Pages Action
       uses: peaceiris/actions-gh-pages@v2.5.1
       env:
