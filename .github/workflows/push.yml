@@ -17,9 +17,15 @@ jobs:
       run: npm install
     - name: Test
       run: npm test
-    - name: Docs
-      if: github.ref == 'refs/heads/master'
-      uses: testthedocs/github-pages-deploy-action@master
+
+    - name: Docs Build
+    - run: npm run docs:build
+    - name: GitHub Pages Action
+      uses: peaceiris/actions-gh-pages@v2.5.1
+      env:
+        ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+        PUBLISH_BRANCH: gh-pages
+        PUBLISH_DIR: ./docs/.vuepress/dist/
     - name: Publish
       if: github.ref == 'refs/heads/master'
       uses: mikeal/merge-release@master
