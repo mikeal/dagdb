@@ -23,8 +23,8 @@ jobs:
     - name: Docs Build
       run: npm run docs:build
     - name: GitHub Pages Action
-      uses: peaceiris/actions-gh-pages@v3.5.6
-      env:
+      uses: peaceiris/actions-gh-pages@v3
+      with:
         github_token: ${{ secrets.ACTIONS_DEPLOY_KEY }}
         publish_dir: ./docs/.vuepress/dist/
     - name: Publish
