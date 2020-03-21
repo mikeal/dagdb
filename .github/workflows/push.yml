@@ -6,8 +6,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
-      with:
-        fetch-depth: 1
     - name: Cache node_modules
       id: cache-modules
       uses: actions/cache@v1
