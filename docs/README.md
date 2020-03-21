@@ -28,4 +28,4 @@ await db.set('key', { hello: 'world' })
 db = await db.commit()
 ```
 
-To learn more, move along to the [Getting Started]() section.
+To learn more, move along to the [Getting Started](getting-started) section.
