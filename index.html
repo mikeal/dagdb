@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>DagDB</title>
+    <meta name="description" content="">
+    <meta name="generator" content="VuePress 1.4.0">
+    
+    
+    <link rel="preload" href="/assets/css/0.styles.59ba12ca.css" as="style"><link rel="preload" href="/assets/js/app.33dfee4a.js" as="script"><link rel="preload" href="/assets/js/2.46a2406a.js" as="script"><link rel="preload" href="/assets/js/5.8f539b34.js" as="script"><link rel="prefetch" href="/assets/js/3.d052a4f0.js"><link rel="prefetch" href="/assets/js/4.5f60d4ea.js"><link rel="prefetch" href="/assets/js/6.da215d21.js"><link rel="prefetch" href="/assets/js/7.cfc9cb83.js">
+    <link rel="stylesheet" href="/assets/css/0.styles.59ba12ca.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container no-sidebar"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/" class="home-link router-link-exact-active router-link-active"></a> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <!----></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><!---->  <!----> </aside> <main class="page"> <div class="theme-default-content content__default"><h1 id="dagdb"><a href="#dagdb" class="header-anchor">#</a> DagDB</h1> <p>DagDB is a flexible database for distributed applications.</p> <p>It can store JSON, binary, and even streams of binary. You can nest
+these values withn each other or create links between pieces of data for
+efficiency and de-duplication. You can even next databases inside of other
+databases. This gives you the flexibility
+to assemble incredibly large and efficient graphs of information while
+still being able to perform efficient transactions no matter how large
+these graphs become.</p> <p>DagDB has decentralized replication that works very similar to git. The
+vast majority of merge conflicts can be handled automatically and you
+can even merge several databases from different users into a single database.</p> <p>It works in browsers, Node.js, and can be deployed to any cloud environment
+with little more than basic storage (S3). It even runs in &quot;Serverless&quot;
+environments like Lambda.</p> <p>The primitives used in DagDB are also well suited to CDN's and other edge
+caching solutions.</p> <div class="language-js extra-class"><pre class="language-js"><code><span class="token keyword">const</span> dagdb <span class="token operator">=</span> <span class="token function">require</span><span class="token punctuation">(</span><span class="token string">'dagdb'</span><span class="token punctuation">)</span>
+<span class="token keyword">let</span> db <span class="token operator">=</span> <span class="token keyword">await</span> dagdb<span class="token punctuation">.</span><span class="token function">create</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+<span class="token keyword">await</span> db<span class="token punctuation">.</span><span class="token function">set</span><span class="token punctuation">(</span><span class="token string">'key'</span><span class="token punctuation">,</span> <span class="token punctuation">{</span> hello<span class="token operator">:</span> <span class="token string">'world'</span> <span class="token punctuation">}</span><span class="token punctuation">)</span>
+db <span class="token operator">=</span> <span class="token keyword">await</span> db<span class="token punctuation">.</span><span class="token function">commit</span><span class="token punctuation">(</span><span class="token punctuation">)</span>
+</code></pre></div><p>To learn more, move along to the <a href="">Getting Started</a> section.</p></div> <footer class="page-edit"><!----> <!----></footer> <!----> </main></div><div class="global-ui"></div></div>
+    <script src="/assets/js/app.33dfee4a.js" defer></script><script src="/assets/js/2.46a2406a.js" defer></script><script src="/assets/js/5.8f539b34.js" defer></script>
+  </body>
+</html>
