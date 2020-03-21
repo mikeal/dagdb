@@ -17,6 +17,9 @@ jobs:
       run: npm install
     - name: Test
       run: npm test
+    - name: Docs
+      if: github.ref == 'refs/heads/master'
+      uses: testthedocs/github-pages-deploy-action@master
     - name: Publish
       if: github.ref == 'refs/heads/master'
       uses: mikeal/merge-release@master
