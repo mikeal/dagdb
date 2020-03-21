@@ -87,16 +87,29 @@ module.exports = (Block, codec = 'dag-cbor') => {
       this.cache = new Map()
     }
 
-    async set (key, block) {
-      const encoderBlocks = []
+    async __encode (block) {
       if (!isBlock(block)) {
+        let last
         for await (const _block of encode(block)) {
-          encoderBlocks.push(_block)
+          if (Block.isBlock(_block)) await this.store.put(_block)
+          last = _block
         }
-        block = Block.encoder(encoderBlocks.pop(), codec)
+        block = Block.encoder(last, codec)
       }
+      await this.store.put(block)
+      return block
+    }
+
+    async link (block) {
+      block = await this.__encode(block)
+      const cid = await block.cid()
+      return decode(cid, this.store)
+    }
+
+    async set (key, block) {
+      block = await this.__encode(block)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
-      this.cache.set(key, [op, block, ...encoderBlocks])
+      this.cache.set(key, [op, block])
     }
 
     async del (key) {

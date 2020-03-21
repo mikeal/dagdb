@@ -37,3 +37,12 @@ test('manual transation', async () => {
   const db = database(latest.root, latest.store)
   same(await db.get('test'), { hello: 'world' })
 })
+
+test('links', async () => {
+  const db = await basics()
+  let link = db.link({ blah: true }) // use the promise
+  await db.set('test2', { two: link })
+  const obj = await db.get('test2')
+  link = await link
+  same(await obj.two(), await link())
+})

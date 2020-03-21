@@ -32,6 +32,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return kv.set(...args)
     }
 
+    async link (...args) {
+      const kv = await this._kv
+      return kv.link(...args)
+    }
+
     async getRoot () {
       if (!this._rootBlock) {
         readonly(this, '_rootBlock', this.store.get(this.root))

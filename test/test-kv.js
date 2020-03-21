@@ -151,3 +151,15 @@ test('size', async () => {
   await db.del('missing')
   same(await db.size(), 2)
 })
+
+test('link', async () => {
+  let db = await basics()
+  const data = { test: Math.random() }
+  const link = await db.link(data)
+  same(await link(), data)
+  assert.ok(link.cid.equals((await db.link(data)).cid))
+  await db.set('test2', { two: link })
+  db = await db.commit()
+  const obj = await db.get('test2')
+  assert.ok(obj.two.cid.equals(link.cid))
+})

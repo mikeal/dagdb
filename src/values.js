@@ -40,14 +40,14 @@ module.exports = (Block, codec) => {
     // this method is expected to accept decoded Block data directly
     // and it can't work with any special types.
     if (isCID(value)) {
-      const getter = async () => {
-        if (getter.block) return getter.block
+      const link = async () => {
+        if (link.block) return link.block
         const block = await store.get(value)
-        readonly(getter, 'block', block)
+        readonly(link, 'block', block)
         return decode(block.decode())
       }
-      readonly(getter, 'cid', value)
-      return getter
+      readonly(link, 'cid', value)
+      return link
     }
     if (typeof value === 'object') {
       if (value._dagdb) {
@@ -74,6 +74,7 @@ module.exports = (Block, codec) => {
     // yield is NOT a Block. This is so that the final
     // root of each each node can be embedded in a parent.
     // This contract MUST be adhered to by all special types.
+    if (typeof value === 'object' && typeof value.then === 'function') value = await value
     if (isCID(value)) {
       yield value
       return

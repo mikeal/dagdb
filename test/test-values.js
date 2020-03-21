@@ -4,7 +4,6 @@ const { kv } = require('../')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const { PassThrough } = require('stream')
 
 const create = async (_kv = kv) => {
   const store = inmem()
