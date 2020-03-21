@@ -4,6 +4,7 @@ const { kv } = require('../')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
+const { PassThrough } = require('stream')
 
 const create = async (_kv = kv) => {
   const store = inmem()
@@ -88,4 +89,30 @@ test('kv in kv', async () => {
   // the latest changes would be commited so it wouldn't
   // match the old transaction root
   assert(!db.root.equals(await latest.get('with-cache')))
+})
+
+const load = async function * (...args) {
+  yield * args
+}
+
+test('stream fbl', async () => {
+  const iter = load(Buffer.from('1234'), Buffer.from('5678'))
+  let db = await basics()
+  await db.set('test', { stream: iter })
+  db = await db.commit()
+  const obj = await db.get('test')
+  let expected = ['1234', '5678']
+  for await (const buffer of obj.stream) {
+    same(expected.shift(), buffer.toString())
+  }
+  await db.set('test2', { two: obj.stream })
+  db = await db.commit()
+  const obj2 = await db.get('test2')
+  expected = ['1234', '5678']
+  for await (const buffer of obj2.two) {
+    same(expected.shift(), buffer.toString())
+  }
+  for await (const buffer of obj2.two.read(0, 2)) {
+    same(buffer.toString(), '12')
+  }
 })

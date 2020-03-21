@@ -109,6 +109,7 @@ instance when retrieved by user facing APIs.
 type DagDBTypeV1 union {
   | &Database "database"
   | &Transaction "transaction"
+  | &FlexibleByteLayout "fbl"
 } representation keyed
 
 type DagDBType union {

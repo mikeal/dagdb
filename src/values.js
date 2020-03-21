@@ -1,7 +1,19 @@
 const { readonly, isCID, validate } = require('./utils')
+const createFBL = require('@ipld/fbl/bare')
 const types = {}
 
 module.exports = (Block, codec) => {
+  const fbl = createFBL(Block, codec)
+
+  const fblDecoder = (root, store) => {
+    const get = store.get.bind(store)
+    const iter = fbl.read(root, get)
+    iter._dagdb = { v1: 'fbl' }
+    iter.encode = () => (async function * (r) { yield r })(root)
+    iter.read = (...args) => fbl.read(root, get, ...args)
+    return iter
+  }
+
   const _typeEncoder = async function * (gen, set) {
     let last
     for await (const block of gen) {
@@ -75,6 +87,15 @@ module.exports = (Block, codec) => {
       yield value.cid
       return
     }
+    if (value[Symbol.asyncIterator] && !value._dagdb) {
+      let last
+      for await (const block of fbl.from(value)) {
+        yield block
+        last = block
+      }
+      yield { _dagdb: { v1: { fbl: await last.cid() } } }
+      return
+    }
     // fast return non-objects
     if (typeof value !== 'object') {
       yield value
@@ -107,6 +128,7 @@ module.exports = (Block, codec) => {
   }
 
   const register = (type, fn) => { types[type] = fn }
+  register('fbl', fblDecoder)
 
   return { encode, decode, register }
 }

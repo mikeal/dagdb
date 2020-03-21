@@ -197,6 +197,10 @@
           "transaction": {
             "kind": "link",
             "expectedType": "Transaction"
+          },
+          "fbl": {
+            "kind": "link",
+            "expectedType": "FlexibleByteLayout"
           }
         }
       }
