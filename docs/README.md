@@ -25,7 +25,7 @@ caching solutions.
 const dagdb = require('dagdb')
 let db = await dagdb.create()
 await db.set('key', { hello: 'world' })
-db = await db.commit()
+db = await db.update()
 ```
 
 To learn more, move along to the [Getting Started](getting-started) section.

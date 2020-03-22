@@ -22,8 +22,8 @@ let db = await dagdb.create('dbname')
 This creates a new databases. The above example is suitable for the browser, where `dbname`
 is simply the name of the database and will be created in browser storage (IndexedDB).
 
-In Node.js `dbname` is the path to a file or directory. See [Node.js storage options]() for
-details.
+In Node.js `dbname` is the path to a file or directory. See
+[Node.js storage options](database/storage#nodejs) for details.
 
 ## Open a database
 
@@ -47,24 +47,27 @@ and device profiles.
 let db = await dagdb.live('https://storage.mysite.com/db')
 ```
 
+To learn more about working with live databases head over to the
+[live database](database/live) documentation.
+
 ## Reading and writing data
 
 ```js
 await db.set('key', { hello: 'world' })
 await db.get('key') // { hello: 'world' }
-db = await db.commit()
+db = await db.update()
 ```
 
 When you create or open a database the object you get is a database transaction. This instance
 is permanently configured to the state of the database when you opened it. You can set new keys
 and retrive both newly added keys and keys that are already in the database, but those keys
-are not persisted into the database until it is commited (`.commit()`).
+are not persisted into the database until it is commited (see [`.commit()`](under-the-hood/commits)).
+The `update()` method commits the transaction and then updates the local HEAD to point to this
+new commit.
 
-The `.commit()` method returns a *new* database transaction configured to the now commited
+The `.update()` method returns a *new* database transaction configured to the now commited
 state of the database.
 
 You can store anything that can be encoded as JSON as well as binary data and streams.
 
-For more information on storing different data types check out the [value types]() page.
-
-If you're interested in how to build data using links check out the [linking]() section.
+For more information on storing different data types move on to the [value types](database/values) page.
