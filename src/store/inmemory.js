@@ -34,7 +34,7 @@ class InMemory {
         incomplete.add(linkKey)
         continue
       }
-      await this.graph(new CID(linkKey), depth - 1, missing, incomplete)
+      await this.graph(new CID(linkKey), depth - 1, missing, incomplete, skips)
     }
     if (missing.size === 0 && incomplete.size === 0) {
       this.complete.add(key)

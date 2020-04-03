@@ -27,11 +27,11 @@
   },
   "homepage": "https://github.com/mikeal/dagdb#readme",
   "dependencies": {
-    "@ipld/block": "^2.2.0",
-    "@ipld/fbl": "0.0.0",
+    "@ipld/block": "^3.0.0",
+    "@ipld/fbl": "0.0.1",
     "datastore-car": "^1.1.3",
     "iamap": "^0.7.0",
-    "ipld-schema-validation": "0.3.2",
+    "ipld-schema-validation": "0.3.4",
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {
