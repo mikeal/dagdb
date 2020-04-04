@@ -1,4 +1,4 @@
-const { it } = require('mocha')
+/* globals it */
 const hamt = require('../src/hamt')
 const test = it
 const same = require('assert').deepStrictEqual

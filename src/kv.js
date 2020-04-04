@@ -248,7 +248,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
           if (decoded.set) value.push(await stackedGet(decoded.set.val))
           this.cache.set(key, value)
         } else {
-          this.cache.set(key, [op, block])
+          const value = [op]
+          // This is an odd one.
+          // Arrays with values of undefined end up getting encoded as null
+          // in the browser and not in some Node.js versions. This is easily
+          // fixable below but it can't be tested effectively in Node.js
+          // so we have to disable coverage until we have browser coverage working.
+          // istanbul ignore else
+          if (block) value.push(block)
+          this.cache.set(key, value)
         }
       }
     }

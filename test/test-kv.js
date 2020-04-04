@@ -1,4 +1,4 @@
-const { it } = require('mocha')
+/* globals it */
 const inmem = require('../src/store/inmemory')
 const { kv } = require('../')
 const bare = require('../bare')

@@ -1,4 +1,4 @@
-const { it } = require('mocha')
+/* globals it */
 const inmem = require('../src/store/inmemory')
 const { database } = require('../')
 const test = it

@@ -11,7 +11,7 @@
     "test:node": "mocha test/test-*.js",
     "test:browser": "polendina --cleanup --service-worker test/test-*.js",
     "test:cli": "tap test/cli/test-*.js",
-    "test": "hundreds mocha test/test-*.js",
+    "test": "hundreds mocha test/test-*.js && npm run test:browser",
     "coverage": "nyc --reporter=html mocha test/test-*.js && npx http-server coverage",
     "build:schema": "ipld-schema to-json Schema.md > src/schema.json"
   },
