@@ -6,10 +6,15 @@ const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set
   if (!incomplete) incomplete = new Set()
   if (!missing) missing = new Set()
   for (const key of skip) {
-    if (missing.has(key)) missing.delete(key)
-    if (incomplete.has(key)) incomplete.delete(key)
+    missing.delete(key)
+    incomplete.delete(key)
   }
-  if (depth === -1) return { missing, incomplete }
+  if (depth === -1) {
+    return {
+      missing: missing.size ? missing : undefined
+      // incomplete: incomplete.size ? incomplete : undefined
+    }
+  }
   const push = async key => {
     skip.add(key)
     let block
@@ -39,17 +44,20 @@ const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set
           missing.add(key)
         }
       }
+      /*
       if (result.incomplete) {
         for (const key of result.incomplete.values()) {
           incomplete.add(key)
         }
       }
+      */
     }
   }
   if (!missing.size && !incomplete.size) return { complete: true }
   return {
-    missing: missing.size ? missing : undefined,
-    incomplete: incomplete.size ? incomplete : undefined
+    missing
+    // missing: missing.size ? missing : undefined,
+    // incomplete: incomplete.size ? incomplete : undefined
   }
 }
 module.exports = replicate

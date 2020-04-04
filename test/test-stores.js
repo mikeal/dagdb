@@ -88,7 +88,7 @@ const graph = async (create, fn) => {
     assert.ok(missing.has(cid.toString('base64')))
   })
   const testSmallGraph = fixtureName => {
-    const addTests = (reverse=false) => {
+    const addTests = (reverse = false) => {
       const r = reverse ? ', reversed' : ''
       const flip = arr => reverse ? [...arr].reverse() : arr
       test(`${fixtureName}${r}`, async () => {
@@ -142,7 +142,7 @@ describe('inmem', () => {
   })
   test('store block twice', async () => {
     const store = await inmem()
-    const block = b({ hello: 'world'})
+    const block = b({ hello: 'world' })
     await store.put(block)
     await store.put(block)
     same(store.storage.size, 1)
@@ -150,7 +150,7 @@ describe('inmem', () => {
   describe('store.graph()', () => {
     graph(inmem, (store, ...args) => store.graph(...args))
 
-    test(`depth 0`, async () => {
+    test('depth 0', async () => {
       const store = await inmem()
       const blocks = await fixtures.commonBranches()
       const branches = blocks.slice(1, 3)
@@ -168,8 +168,8 @@ describe('inmem', () => {
       // cause a full traversal
       await store.graph(await root.cid())
       // the full traversal should update the competion cache
-      var { complete, missing, incomplete } = await store.graph(await root.cid(), 0)
-      assert.ok(complete && !missing && !incomplete)
+      const r = await store.graph(await root.cid(), 0)
+      assert.ok(r.complete && !r.missing && !r.incomplete)
     })
   })
   describe('replicate', () => {
@@ -177,6 +177,221 @@ describe('inmem', () => {
       const empty = inmem()
       const cid = args.shift()
       return replicate(cid, store, empty, ...args)
+    })
+    const basicTest = async (fromBlocks, toBlocks, ...args) => {
+      const _from = await inmem()
+      const _to = await inmem()
+      await Promise.all(fromBlocks.map(b => _from.put(b)))
+      await Promise.all(toBlocks.map(b => _to.put(b)))
+      let count = 0
+      const puts = []
+      const _put = _to.put.bind(_to)
+      _to.put = async block => {
+        count++
+        puts.push(await block.cid())
+        return _put(block)
+      }
+      const root = await fromBlocks[0].cid()
+      await Promise.all([_from.graph(root), _to.graph(root)])
+      const { complete, missing, incomplete } = await replicate(root, _from, _to, ...args)
+      return { complete, missing, incomplete, root, count, puts }
+    }
+    test('already complete', async () => {
+      const blocks = await fixtures.commonBranches()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, blocks)
+      assert.ok(complete && !missing && !incomplete)
+      same(count, 0)
+    })
+    test('only missing leaf', async () => {
+      const _to = await fixtures.commonBranches()
+      const _from = await fixtures.commonBranches()
+      const leaf = _to.pop()
+      const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to)
+      assert.ok(complete && !missing && !incomplete)
+      same(count, 1)
+      assert.ok(puts[0].equals(await leaf.cid()))
+    })
+    const depthTests = (skip = false) => {
+      const s = skip ? ', skip block' : ''
+      test(`missing leaf, depth 0${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const leaf = _to.pop()
+        const cid = await leaf.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count } = await basicTest(_from, _to, 0, ...args)
+        same(count, 0)
+        if (!skip) {
+          assert.ok(!complete && missing && !incomplete)
+          assert.ok(missing.has(key))
+        } else {
+          assert.ok(complete && !missing && !incomplete)
+        }
+      })
+      test(`missing leaf, depth 1${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const leaf = _to.pop()
+        const cid = await leaf.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 1, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing leaf, depth 2${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const leaf = _to.pop()
+        const cid = await leaf.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 2, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing branch, depth 0${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const [branch] = _to.splice(1, 1)
+        const cid = await branch.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 0, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing branch, depth 1${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const [branch] = _to.splice(1, 1)
+        const cid = await branch.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 1, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(await branch.cid()))
+      })
+      test(`missing branch, depth 2${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const [branch] = _to.splice(1, 1)
+        const cid = await branch.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 2, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing root, depth 0${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const root = _to.shift()
+        const cid = await root.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 0, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing root, depth 1${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const root = _to.shift()
+        const cid = await root.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 1, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      test(`missing root, depth 2${s}`, async () => {
+        const _to = await fixtures.commonBranches()
+        const _from = await fixtures.commonBranches()
+        const root = _to.shift()
+        const cid = await root.cid()
+        const key = cid.toString('base64')
+        const args = skip ? [1, new Set([key])] : []
+        const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 2, ...args)
+        assert.ok(complete && !missing && !incomplete)
+        same(count, skip ? 0 : 1)
+        if (!skip) assert.ok(puts[0].equals(cid))
+      })
+      if (!skip) depthTests(true)
+    }
+    depthTests()
+
+    test('depth 0', async () => {
+      const blocks = await fixtures.commonBranches()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, [], 0)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 1)
+      same(missing.size, 2)
+    })
+    test('depth 1', async () => {
+      const blocks = await fixtures.commonBranches()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, [], 1)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 3)
+      same(missing.size, 1)
+    })
+    test('missing leaf', async () => {
+      const blocks = await fixtures.commonBranches()
+      blocks.pop()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, blocks)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 0)
+      same(missing.size, 1)
+    })
+    test('depth 0, missing leaf', async () => {
+      const blocks = await fixtures.commonBranches()
+      blocks.pop()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, blocks, 0)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 0)
+      same(missing.size, 1)
+    })
+    test('depth 1, missing leaf', async () => {
+      const blocks = await fixtures.commonBranches()
+      blocks.pop()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, blocks, 1)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 0)
+      same(missing.size, 1)
+    })
+    test('depth -1, missing leaf', async () => {
+      const blocks = await fixtures.commonBranches()
+      blocks.pop()
+      const { complete, missing, incomplete, count } = await basicTest(blocks, blocks, -1)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 0)
+      same(missing.size, 1)
+    })
+    test('propogate storage error', async () => {
+      const _from = await inmem()
+      const _to = await inmem()
+      const blocks = await fixtures.commonBranches()
+      const root = blocks.shift()
+      const cid = await root.cid()
+      _from.get = async cid => {
+        throw new Error('test')
+      }
+      let threw = false
+      try {
+        await replicate(cid, _from, _to)
+      } catch (e) {
+        if (e.message !== 'test') throw new Error('Wrong error')
+        threw = true
+      }
+      assert.ok(threw)
     })
   })
 })
