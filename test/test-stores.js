@@ -12,6 +12,8 @@ const basics = async create => {
   const store = await create()
   const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
   await store.put(block)
+  same(await store.has(await block.cid()), true)
+  same(await store.has(await missing.cid()), false)
   const first = await block.cid()
   const second = await store.get(first)
   if (!first.equals(await second.cid())) {
@@ -266,6 +268,18 @@ const replicateTests = create => {
   })
   const depthTests = (skip = false) => {
     const s = skip ? ', skip block' : ''
+    test(`missing leaf, depth -1${s}`, async () => {
+      const _to = await fixtures.rawCommonLeaf()
+      const _from = await fixtures.rawCommonLeaf()
+      const leaf = _to.pop()
+      const cid = await leaf.cid()
+      const key = cid.toString('base64')
+      const args = skip ? [1, new Set([key])] : []
+      const { complete, missing, incomplete, count } = await basicTest(_from, _to, -1, ...args)
+      same(count, 0)
+      assert.ok(!complete && !missing && incomplete)
+      same(incomplete.size, 1)
+    })
     test(`missing leaf, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -301,6 +315,18 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
+    })
+    test(`missing branch, depth -1${s}`, async () => {
+      const _to = await fixtures.rawCommonLeaf()
+      const _from = await fixtures.rawCommonLeaf()
+      const [branch] = _to.splice(1, 1)
+      const cid = await branch.cid()
+      const key = cid.toString('base64')
+      const args = skip ? [1, new Set([key])] : []
+      const { complete, missing, incomplete, count } = await basicTest(_from, _to, -1, ...args)
+      assert.ok(!complete && !missing && incomplete)
+      same(count, 0)
+      same(incomplete.size, 1)
     })
     test(`missing branch, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
@@ -342,6 +368,18 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
+    })
+    test(`missing root, depth -1${s}`, async () => {
+      const _to = await fixtures.rawCommonLeaf()
+      const _from = await fixtures.rawCommonLeaf()
+      const root = _to.shift()
+      const cid = await root.cid()
+      const key = cid.toString('base64')
+      const args = skip ? [1, new Set([key])] : []
+      const { complete, missing, incomplete, count } = await basicTest(_from, _to, -1, ...args)
+      assert.ok(!complete && missing && !incomplete)
+      same(count, 0)
+      same(missing.size, 1)
     })
     test(`missing root, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
@@ -550,6 +588,38 @@ if (!process.browser) {
     })
     describe('replicate', () => {
       replicateTests(create)
+    })
+    after(() => {
+      server.close()
+      return closed
+    })
+  })
+  describe('http no params', () => {
+    const port = getPort()
+    let store = inmem()
+    const server = require('http').createServer(createNodejsHandler(Block, store))
+    const closed = new Promise(resolve => server.once('close', resolve))
+    before(() => new Promise((resolve, reject) => {
+      server.listen(port, e => {
+        if (e) return reject(e)
+        resolve()
+      })
+    }))
+    const createStore = require('../src/store/https')(Block)
+    const create = () => {
+      const id = Math.random().toString()
+      const url = `http://localhost:${port}`
+      return createStore(url)
+    }
+    test('basics', async () => {
+      await basics(create)
+    })
+    test('url making', done => {
+      const store = create()
+      same(store.mkurl('asdf'), `http://localhost:${port}/asdf`)
+      store.url += '/'
+      same(store.mkurl('asdf'), `http://localhost:${port}/asdf`)
+      done()
     })
     after(() => {
       server.close()

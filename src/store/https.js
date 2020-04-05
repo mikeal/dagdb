@@ -21,10 +21,8 @@ module.exports = Block => {
 
     mkurl (path, params) {
       let u = this.url
-      if (path) {
-        if (!u.endsWith('/')) u += '/'
-        u += path
-      }
+      if (!u.endsWith('/')) u += '/'
+      u += path
       if (!params) params = this.params
       if (params) u += `?${params.toString()}`
       return u
@@ -47,15 +45,11 @@ module.exports = Block => {
       else return false
     }
 
-    async graph (cid, depth, missing, incomplete, skips) {
+    async graph (cid, depth) {
       let params
       if (typeof depth !== 'undefined') {
         params = new URLSearchParams(this.params)
-        for (const [key, value] of Object.entries({ depth, missing, incomplete, skips })) {
-          if (typeof value !== 'undefined') {
-            params.set(key, value instanceof Set ? Array.from(value) : value)
-          }
-        }
+        params.set('depth', depth)
       }
       const url = this.mkurl(cid.toString('base32') + '/graph', params)
       const info = await this._getJSON(url)

@@ -1,6 +1,6 @@
 const CID = require('cids')
 
-const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set()) => {
+const replicate = async (cid, _from, _to, depth = 1024, batchSize = 100, skip = new Set()) => {
   let { complete, missing, incomplete } = await _to.graph(cid, depth)
   if (complete) return { complete }
   if (!incomplete) incomplete = new Set()
