@@ -81,7 +81,7 @@ test('not found', async () => {
   } catch (e) {
     const match = 'No key named "notfound"'
     if (e.message !== match) throw e
-    if (e.status !== 404) throw e
+    if (e.statusCode !== 404) throw e
   }
   assert.ok(threw)
   await db.del('test')
@@ -91,7 +91,7 @@ test('not found', async () => {
   } catch (e) {
     const match = 'No key named "test"'
     if (e.message !== match) throw e
-    if (e.status !== 404) throw e
+    if (e.statusCode !== 404) throw e
   }
   assert.ok(threw)
 })

@@ -6,20 +6,21 @@ const jsonHeaders = body => {
 
 module.exports = (Block, store, depthLimit = 1024) => {
   const handler = async opts => {
-    const { method, path, params, body } = opts
+    let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param method')
     if (!path) throw new Error('Missing required param path')
+    if (path[0] === '/') path = path.slice(1)
     if (method === 'PUT' && !body) {
       throw new Error('Missing required param body')
     }
     if (method === 'GET') {
-      if (path.endsWith('/graph')) {
+      if (path.includes('/graph')) {
         const [key] = path.split('/')
         let { depth, missing, incomplete, skips } = params
         if (missing) missing = new Set(missing)
         if (incomplete) incomplete = new Set(incomplete)
         if (skips) skips = new Set(skips)
-        if (depth) {
+        if (typeof depth !== 'undefined') {
           if (depth > depthLimit) throw new Error(`Depth is greater than max limit of ${depthLimit}`)
         } else {
           depth = depthLimit
@@ -32,23 +33,33 @@ module.exports = (Block, store, depthLimit = 1024) => {
       } else {
         if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
         const cid = new CID(path)
-        const block = await store.get(cid)
+        let block
+        try {
+          block = await store.get(cid)
+        } catch (e) {
+          if (e.statusCode === 404) return { statusCode: 404 }
+          throw e
+        }
         const body = block.encodeUnsafe()
         return { headers: { 'content-length': body.length }, body }
       }
     } else if (method === 'PUT') {
       if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
       const cid = new CID(path)
-      const block = Block.create(body, cid.codec)
+      const block = Block.create(body, cid)
       await store.put(block)
-      return { status: 201 }
+      return { statusCode: 201 }
     } else if (method === 'HEAD') {
       if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
       const cid = new CID(path)
       const has = await store.has(cid)
-      if (!has) return { status: 404 }
+      if (!has) return { statusCode: 404 }
       if (has.length) return { headers: { 'content-length': has.length } }
-      return { status: 200 }
+      return { statusCode: 200 }
+    } else {
+      let e = new Error('Unknown method')
+      e.statusCode = 405
+      throw e
     }
   }
   return handler

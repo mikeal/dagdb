@@ -32,17 +32,18 @@ module.exports = Block => {
 
     async get (cid) {
       const data = await this._getBuffer(this.mkurl(cid.toString('base32')))
-      return Block.create(data, data.codec)
+      return Block.create(data, cid)
     }
 
     async put (block) {
       const cid = await block.cid()
-      await this._put(this.mkurl(cid.toString('base32')), block.encodeUnsafe())
+      const url = this.mkurl(cid.toString('base32'))
+      const ret = await this._put(url, block.encodeUnsafe())
     }
 
     async has (cid) {
       const resp = await this._head(this.mkurl(cid.toString('base32')))
-      if (resp.status === 200) return true
+      if (resp.statusCode === 200) return true
       else return false
     }
 
@@ -58,6 +59,9 @@ module.exports = Block => {
       }
       const url = this.mkurl(cid.toString('base32') + '/graph', params)
       const info = await this._getJSON(url)
+      const { result } = info
+      if (result.incomplete) result.incomplete = new Set(result.incomplete)
+      if (result.missing) result.missing = new Set(result.missing)
       return info.result
     }
   }
