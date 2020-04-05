@@ -38,7 +38,7 @@ module.exports = Block => {
     async put (block) {
       const cid = await block.cid()
       const url = this.mkurl(cid.toString('base32'))
-      const ret = await this._put(url, block.encodeUnsafe())
+      return this._put(url, block.encodeUnsafe())
     }
 
     async has (cid) {

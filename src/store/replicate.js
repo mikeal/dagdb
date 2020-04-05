@@ -50,7 +50,6 @@ const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set
           incomplete.add(key)
         }
       }
-
     }
   }
   if (!missing.size && !incomplete.size) return { complete: true }

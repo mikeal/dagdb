@@ -1,4 +1,4 @@
-/* globals describe, it */
+/* globals describe, it, before, after */
 const inmem = require('../src/store/inmemory')
 const replicate = require('../src/store/replicate')
 const test = it
@@ -243,14 +243,10 @@ const replicateTests = create => {
       return _put(block)
     }
     const root = await fromBlocks[0].cid()
-    const _all = async (blocks, store) => {
-      const allblocks = [...blocks, ...[...blocks].reverse()]
-      let ret = await Promise.all(allblocks.map(b => b.cid().then(cid => store.graph(cid))))
-      return ret
-    }
+    const _all = (blocks, store) => Promise.all([...blocks].reverse().map(b => b.cid().then(cid => store.graph(cid))))
     await Promise.all([_all(fromBlocks, _from), _all(toBlocks, _to)])
     const { complete, missing, incomplete } = await replicate(root, _from, _to, ...args)
-    const stores = [ _from, _to ]
+    const stores = [_from, _to]
     return { complete, missing, incomplete, root, count, puts, stores }
   }
   test('already complete', async () => {
@@ -277,7 +273,7 @@ const replicateTests = create => {
       const cid = await leaf.cid()
       const key = cid.toString('base64')
       const args = skip ? [1, new Set([key])] : []
-      const { complete, missing, incomplete, count, stores } = await basicTest(_from, _to, 0, ...args)
+      const { complete, missing, incomplete, count } = await basicTest(_from, _to, 0, ...args)
       same(count, 0)
       assert.ok(!complete && !missing && incomplete)
       same(incomplete.size, 2)
@@ -375,7 +371,7 @@ const replicateTests = create => {
       const cid = await root.cid()
       const key = cid.toString('base64')
       const args = skip ? [1, new Set([key])] : []
-      const { complete, missing, incomplete, count, puts } = await basicTest(_from, _to, 1, ...args)
+      const { complete, missing, incomplete } = await basicTest(_from, _to, 1, ...args)
       // this is a little counter-intuitive but nonetheless correct.
       // if you skip the root block and ask for its graph, it will
       // always return that the traversal is complete because you literally
@@ -511,53 +507,53 @@ describe('inmem', () => {
   })
 })
 
-if (process.browser) return
+if (!process.browser) {
+  const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
+  const stores = {}
 
-const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
-const stores = {}
+  const createNodejsHandler = require('../src/http/store/nodejs')
 
-const createNodejsHandler = require('../src/http/store/nodejs')
-
-const handler = async (req, res) => {
-  const parsed = new URL('http://asdf' + req.url)
-  const id = parsed.searchParams.get('id')
-  parsed.searchParams.delete('id')
-  const store = stores[id]
-  if (!store) throw new Error('Missing store')
-  req.url = parsed.toString().slice('http://asdf'.length)
-  const _handler = createNodejsHandler(Block, store)
-  return _handler(req, res)
-}
-
-describe('http', () => {
-  const port = getPort()
-  const server = require('http').createServer(handler)
-  const closed = new Promise(resolve => server.once('close', resolve))
-  before(() => new Promise((resolve, reject) => {
-    server.listen(port, e => {
-      if (e) return reject(e)
-      resolve()
-    })
-  }))
-  const createStore = require('../src/store/https')(Block)
-  const create = () => {
-    const id = Math.random().toString()
-    const url = `http://localhost:${port}?id=${id}`
-    stores[id] = inmem()
-    const store = createStore(url)
-    return store
+  const handler = async (req, res) => {
+    const parsed = new URL('http://asdf' + req.url)
+    const id = parsed.searchParams.get('id')
+    parsed.searchParams.delete('id')
+    const store = stores[id]
+    if (!store) throw new Error('Missing store')
+    req.url = parsed.toString().slice('http://asdf'.length)
+    const _handler = createNodejsHandler(Block, store)
+    return _handler(req, res)
   }
-  test('basics', async () => {
-    await basics(create)
+
+  describe('http', () => {
+    const port = getPort()
+    const server = require('http').createServer(handler)
+    const closed = new Promise(resolve => server.once('close', resolve))
+    before(() => new Promise((resolve, reject) => {
+      server.listen(port, e => {
+        if (e) return reject(e)
+        resolve()
+      })
+    }))
+    const createStore = require('../src/store/https')(Block)
+    const create = () => {
+      const id = Math.random().toString()
+      const url = `http://localhost:${port}?id=${id}`
+      stores[id] = inmem()
+      const store = createStore(url)
+      return store
+    }
+    test('basics', async () => {
+      await basics(create)
+    })
+    describe('store.graph()', () => {
+      graph(create, (store, ...args) => store.graph(...args))
+    })
+    describe('replicate', () => {
+      replicateTests(create)
+    })
+    after(() => {
+      server.close()
+      return closed
+    })
   })
-  describe('store.graph()', () => {
-    graph(create, (store, ...args) => store.graph(...args))
-  })
-  describe('replicate', () => {
-    replicateTests(create)
-  })
-  after(() => {
-    server.close()
-    return closed
-  })
-})
+}

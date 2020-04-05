@@ -57,7 +57,7 @@ module.exports = (Block, store, depthLimit = 1024) => {
       if (has.length) return { headers: { 'content-length': has.length } }
       return { statusCode: 200 }
     } else {
-      let e = new Error('Unknown method')
+      const e = new Error('Unknown method')
       e.statusCode = 405
       throw e
     }
