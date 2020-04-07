@@ -59,7 +59,7 @@ describe('inmem', () => {
       same(incomplete.size, 2)
       for (const block of branches) {
         const cid = await block.cid()
-        assert.ok(incomplete.has(cid.toString('base64')))
+        assert.ok(incomplete.has(cid.toString('base32')))
       }
       // cause a full traversal
       await store.graph(await root.cid())
