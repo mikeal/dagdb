@@ -82,7 +82,12 @@ class InMemory {
 
   has (cid) {
     const key = cid.toString('base64')
-    return new Promise(resolve => resolve(this.links.from.has(key)))
+    if (!this.links.from.has(key)) {
+      return false
+    } else {
+      const length = this.storage.get(key).encodeUnsafe().length
+      return new Promise(resolve => resolve({ length }))
+    }
   }
 
   async get (cid) {

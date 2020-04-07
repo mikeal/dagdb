@@ -16,23 +16,11 @@ module.exports = (Block, store, depthLimit) => {
     }
     const parsed = new URL('http://asdf' + req.url)
     const params = { }
-    for (let [key, value] of parsed.searchParams.entries()) {
-      if (typeof value === 'undefined') continue
-      if (key === 'depth') value = parseInt(value)
-      params[key] = value
+    if (parsed.searchParams.has('depth')) {
+      params.depth = parseInt(parsed.searchParams.get('depth'))
     }
     const [method, path] = [req.method, req.url]
-    let result
-    try {
-      result = await _handler({ method, path, params, body })
-    } catch (e) {
-      if (e.statusCode) {
-        res.statusCode = e.statusCode
-        res.end(e.statusCode === 404 ? 'Not found' : e.message)
-      }
-      throw e
-    }
-
+    const result = await _handler({ method, path, params, body })
     res.writeHead(result.statusCode || 200, result.headers || {})
     res.end(result.body)
   }

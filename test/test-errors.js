@@ -1,10 +1,11 @@
-/* globals it */
+/* globals it, describe, before, after */
 const inmem = require('../src/store/inmemory')
 const { kv } = require('../')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
 const Block = require('@ipld/block')
+const bent = require('bent')
 
 const create = async (_kv = kv) => {
   const store = inmem()
@@ -95,3 +96,70 @@ test('not found', async () => {
   }
   assert.ok(threw)
 })
+
+if (!process.browser) {
+  describe('http', () => {
+    const store = inmem()
+    test('http storage handler', async () => {
+      const handler = require('../src/http/store/handler')(Block, store)
+      const getError = async (...args) => {
+        try {
+          await handler(...args)
+        } catch (e) {
+          return e
+        }
+        throw new Error('function did not throw')
+      }
+
+      let e = await getError({})
+      same(e.message, 'Missing required param "method"')
+      e = await getError({ method: 'GET' })
+      same(e.message, 'Missing required param "path"')
+      e = await getError({ method: 'PUT', path: '/' })
+      same(e.message, 'Missing required param "body"')
+      e = await getError({ method: 'GET', path: '/cid/graph', params: { depth: 1025 } })
+      same(e.message, 'Depth is greater than max limit of 1024')
+      e = await getError({ method: 'GET', path: 'cid/blah/nope/breaks' })
+      same(e.message, 'Path for block retreival must not include slashes')
+      e = await getError({ method: 'PUT', path: '/cid/nope', body: Buffer.from('') })
+      same(e.message, 'Path for block writes must not include slashes')
+      e = await getError({ method: 'HEAD', path: '/cid/nope' })
+      same(e.message, 'Path for block retreival must not include slashes')
+      e = await getError({ method: 'OPTIONS', path: '/test' })
+      same(e.message, 'Unknown method "OPTIONS"')
+      same(e.statusCode, 405)
+
+      const notfound = (await Block.encoder(Buffer.from('asdf'), 'raw').cid()).toString('base32')
+      e = await handler({ method: 'GET', path: `/${notfound}` })
+      same(e.statusCode, 404)
+    })
+    const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
+    const port = getPort()
+    const handler = require('../src/http/store/nodejs')(Block, store)
+    const server = require('http').createServer(handler)
+    const closed = new Promise(resolve => server.once('close', resolve))
+
+    before(() => new Promise((resolve, reject) => {
+      server.listen(port, e => {
+        if (e) return reject(e)
+        resolve()
+      })
+    }))
+
+    const headNotFound = bent(404, 'string', `http://localhost:${port}`)
+
+    describe('blockstore', async () => {
+      test('not found', async () => {
+        const block = Block.encoder(Buffer.from('test'), 'raw')
+        const cid = await block.cid()
+        const msg = await headNotFound(`/${cid.toString('base32')}`)
+        same(msg, '')
+      })
+    })
+
+    after(() => {
+      server.close()
+      return closed
+    })
+  })
+}

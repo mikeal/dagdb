@@ -12,7 +12,7 @@ const basics = async create => {
   const store = await create()
   const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
   await store.put(block)
-  same(await store.has(await block.cid()), true)
+  assert.ok(await store.has(await block.cid()))
   same(await store.has(await missing.cid()), false)
   const first = await block.cid()
   const second = await store.get(first)
@@ -596,7 +596,7 @@ if (!process.browser) {
   })
   describe('http no params', () => {
     const port = getPort()
-    let store = inmem()
+    const store = inmem()
     const server = require('http').createServer(createNodejsHandler(Block, store))
     const closed = new Promise(resolve => server.once('close', resolve))
     before(() => new Promise((resolve, reject) => {
@@ -607,7 +607,6 @@ if (!process.browser) {
     }))
     const createStore = require('../src/store/https')(Block)
     const create = () => {
-      const id = Math.random().toString()
       const url = `http://localhost:${port}`
       return createStore(url)
     }
@@ -624,6 +623,22 @@ if (!process.browser) {
     after(() => {
       server.close()
       return closed
+    })
+  })
+  describe('http handler', () => {
+    const createHandler = require('../src/http/store/handler')
+    test('head', async () => {
+      const store = inmem()
+      const handler = createHandler(Block, store)
+      const block = Block.encoder(Buffer.from('test'), 'raw')
+      await store.put(block)
+      const cid = await block.cid()
+      const opts = { method: 'HEAD', path: cid.toString('base32') }
+      let result = await handler(opts)
+      same(result.headers['content-length'], 4)
+      store.has = async () => true
+      result = await handler(opts)
+      same(result.statusCode, 200)
     })
   })
 }

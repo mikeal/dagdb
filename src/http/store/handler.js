@@ -7,25 +7,22 @@ const jsonHeaders = body => {
 module.exports = (Block, store, depthLimit = 1024) => {
   const handler = async opts => {
     let { method, path, params, body } = opts
-    if (!method) throw new Error('Missing required param method')
-    if (!path) throw new Error('Missing required param path')
+    if (!method) throw new Error('Missing required param "method"')
+    if (!path) throw new Error('Missing required param "path"')
     if (path[0] === '/') path = path.slice(1)
     if (method === 'PUT' && !body) {
-      throw new Error('Missing required param body')
+      throw new Error('Missing required param "body"')
     }
     if (method === 'GET') {
       if (path.includes('/graph')) {
         const [key] = path.split('/')
-        let { depth, missing, incomplete, skips } = params
-        if (missing) missing = new Set(missing)
-        if (incomplete) incomplete = new Set(incomplete)
-        if (skips) skips = new Set(skips)
+        let { depth } = params
         if (typeof depth !== 'undefined') {
           if (depth > depthLimit) throw new Error(`Depth is greater than max limit of ${depthLimit}`)
         } else {
           depth = depthLimit
         }
-        const result = await store.graph(new CID(key), depth, missing, incomplete, skips)
+        const result = await store.graph(new CID(key), depth)
         if (result.missing) result.missing = Array.from(result.missing)
         if (result.incomplete) result.incomplete = Array.from(result.incomplete)
         const body = Buffer.from(JSON.stringify({ result, depth }))
@@ -37,14 +34,17 @@ module.exports = (Block, store, depthLimit = 1024) => {
         try {
           block = await store.get(cid)
         } catch (e) {
+          // we don't have intentional errors in our own cod
+          // istanbul ignore else
           if (e.statusCode === 404) return { statusCode: 404 }
+          // istanbul ignore next
           throw e
         }
         const body = block.encodeUnsafe()
         return { headers: { 'content-length': body.length }, body }
       }
     } else if (method === 'PUT') {
-      if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
+      if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
       const cid = new CID(path)
       const block = Block.create(body, cid)
       await store.put(block)
@@ -57,7 +57,7 @@ module.exports = (Block, store, depthLimit = 1024) => {
       if (has.length) return { headers: { 'content-length': has.length } }
       return { statusCode: 200 }
     } else {
-      const e = new Error('Unknown method')
+      const e = new Error(`Unknown method "${method}"`)
       e.statusCode = 405
       throw e
     }
