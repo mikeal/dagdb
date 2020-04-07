@@ -1,7 +1,7 @@
 const CID = require('cids')
 
 class Missing extends Error {
-  get status () {
+  get statusCode () {
     return 404
   }
 }
@@ -24,13 +24,18 @@ class InMemory {
     if (!(await this.has(cid))) return { missing: new Set([key]) }
     if (cid.codec === 'raw') return { complete: true }
 
+    if (depth < 0) {
+      incomplete.add(key)
+      return { incomplete }
+    }
+
     for (const linkKey of this.links.from.get(key).keys()) {
       if (this.complete.has(linkKey)) continue
       if (!this.links.from.has(linkKey)) {
         missing.add(linkKey)
         continue
       }
-      if (depth === 0) {
+      if (depth < 1) {
         incomplete.add(linkKey)
         continue
       }
@@ -77,7 +82,12 @@ class InMemory {
 
   has (cid) {
     const key = cid.toString('base64')
-    return new Promise(resolve => resolve(this.links.from.has(key)))
+    if (!this.links.from.has(key)) {
+      return false
+    } else {
+      const length = this.storage.get(key).encodeUnsafe().length
+      return new Promise(resolve => resolve({ length }))
+    }
   }
 
   async get (cid) {

@@ -1,19 +1,19 @@
 const CID = require('cids')
 
-const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set()) => {
+const replicate = async (cid, _from, _to, depth = 1024, batchSize = 100, skip = new Set()) => {
   let { complete, missing, incomplete } = await _to.graph(cid, depth)
   if (complete) return { complete }
   if (!incomplete) incomplete = new Set()
   if (!missing) missing = new Set()
+  if (depth < 0) {
+    return {
+      missing: missing.size ? missing : undefined,
+      incomplete: incomplete.size ? incomplete : undefined
+    }
+  }
   for (const key of skip) {
     missing.delete(key)
     incomplete.delete(key)
-  }
-  if (depth === -1) {
-    return {
-      missing: missing.size ? missing : undefined
-      // incomplete: incomplete.size ? incomplete : undefined
-    }
   }
   const push = async key => {
     skip.add(key)
@@ -21,7 +21,7 @@ const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set
     try {
       block = await _from.get(new CID(key))
     } catch (e) {
-      if (e.status !== 404) throw e
+      if (e.statusCode !== 404) throw e
       missing.add(key)
       return
     }
@@ -44,20 +44,18 @@ const replicate = async (cid, _from, _to, depth, batchSize = 100, skip = new Set
           missing.add(key)
         }
       }
-      /*
+
       if (result.incomplete) {
         for (const key of result.incomplete.values()) {
           incomplete.add(key)
         }
       }
-      */
     }
   }
   if (!missing.size && !incomplete.size) return { complete: true }
   return {
-    missing
-    // missing: missing.size ? missing : undefined,
-    // incomplete: incomplete.size ? incomplete : undefined
+    missing: missing.size ? missing : undefined,
+    incomplete: incomplete.size ? incomplete : undefined
   }
 }
 module.exports = replicate

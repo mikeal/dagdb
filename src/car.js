@@ -69,7 +69,7 @@ const readwrite = async (filename, exportFile) => {
       const block = await cache.get(cid)
       return block
     } catch (e) {
-      if (e.status !== 404) throw e
+      if (e.statusCode !== 404) throw e
       return reader.get(cid).then(data => Block.create(data, cid))
     }
   }

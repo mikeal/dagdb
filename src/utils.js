@@ -11,7 +11,7 @@ const readonly = (source, key, value) => {
 }
 
 class NotFound extends Error {
-  get status () {
+  get statusCode () {
     return 404
   }
 
