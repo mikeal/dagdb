@@ -15,13 +15,16 @@ class InMemory {
 
   async graph (cid, depth = 1024, missing = new Set(), incomplete = new Set(), skips = new Set()) {
     // returns the graph information for the given CID
-    const key = cid.toString('base64')
+    const key = cid.toString('base32')
 
     if (skips.has(key)) return
     skips.add(key)
     if (this.complete.has(key)) return { complete: true }
 
-    if (!(await this.has(cid))) return { missing: new Set([key]) }
+    if (!(await this.has(cid))) {
+      missing.add(key)
+      return { missing }
+    }
     if (cid.codec === 'raw') return { complete: true }
 
     if (depth < 0) {
@@ -52,7 +55,7 @@ class InMemory {
   }
 
   _index (cid, block) {
-    const key = cid.toString('base64')
+    const key = cid.toString('base32')
     if (this.links.from.has(key)) {
       return // already indexed this block
     }
@@ -61,7 +64,7 @@ class InMemory {
     if (cid.codec === 'raw') return
     let complete = true
     for (const [, link] of block.reader().links()) {
-      const linkKey = link.toString('base64')
+      const linkKey = link.toString('base32')
       if (!this.links.to.has(linkKey)) this.links.to.set(linkKey, new Set())
       this.links.to.get(linkKey).add(key)
       _from.add(linkKey)
@@ -71,7 +74,7 @@ class InMemory {
   }
 
   _put (cid, block) {
-    this.storage.set(cid.toString('base64'), block)
+    this.storage.set(cid.toString('base32'), block)
   }
 
   async put (block) {
@@ -81,7 +84,7 @@ class InMemory {
   }
 
   has (cid) {
-    const key = cid.toString('base64')
+    const key = cid.toString('base32')
     if (!this.links.from.has(key)) {
       return false
     } else {
@@ -91,7 +94,7 @@ class InMemory {
   }
 
   async get (cid) {
-    const key = cid.toString('base64')
+    const key = cid.toString('base32')
     const value = this.storage.get(key)
     if (!value) throw new Missing(`Do not have ${key} in store`)
     return value

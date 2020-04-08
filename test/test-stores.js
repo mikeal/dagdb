@@ -1,36 +1,12 @@
 /* globals describe, it, before, after */
-const { fixtures, graphTests, replicateTests } = require('./lib/storage')
+const { fixtures, graphTests, replicateTests, basics } = require('./lib/storage')
 const Block = require('@ipld/block')
 const assert = require('assert')
 const same = assert.deepStrictEqual
 const inmem = require('../src/store/inmemory')
 const test = it
 
-const missing = Block.encoder({ test: Math.random() }, 'dag-cbor')
 const b = obj => Block.encoder(obj, 'dag-cbor')
-
-const basics = async create => {
-  const store = await create()
-  const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
-  await store.put(block)
-  assert.ok(await store.has(await block.cid()))
-  same(await store.has(await missing.cid()), false)
-  const first = await block.cid()
-  const second = await store.get(first)
-  if (!first.equals(await second.cid())) {
-    throw new Error('Store is not retaining blocks')
-  }
-  try {
-    await store.get(await missing.cid())
-  } catch (e) {
-    if (e.statusCode === 404) {
-      return
-    } else {
-      throw new Error('Storage error is missing status code')
-    }
-  }
-  throw new Error('store.get() must throw when missing block')
-}
 
 describe('inmem', () => {
   test('basic inmem', async () => {
@@ -59,7 +35,7 @@ describe('inmem', () => {
       same(incomplete.size, 2)
       for (const block of branches) {
         const cid = await block.cid()
-        assert.ok(incomplete.has(cid.toString('base64')))
+        assert.ok(incomplete.has(cid.toString('base32')))
       }
       // cause a full traversal
       await store.graph(await root.cid())
@@ -70,6 +46,50 @@ describe('inmem', () => {
   })
   describe('replicate', () => {
     replicateTests(inmem)
+  })
+})
+
+describe('kv', () => {
+  const create = require('./lib/mock-kv')
+  test('basics', async () => {
+    await basics(create)
+  })
+  test('store block twice', async () => {
+    const store = await create()
+    const block = b({ hello: 'world' })
+    await store.put(block)
+    same(Object.keys(store.storage).length, 2)
+    await store.put(block)
+    same(Object.keys(store.storage).length, 2)
+  })
+  describe('graph', () => {
+    graphTests(create, (store, ...args) => store.graph(...args))
+  })
+  describe('replicate', () => {
+    replicateTests(create)
+  })
+})
+
+describe('s3', () => {
+  const createS3 = require('./lib/mock-s3')
+  const createStore = require('../src/store/s3')(Block)
+  const create = () => createStore(createS3())
+  test('basics', async () => {
+    await basics(create)
+  })
+  test('store block twice', async () => {
+    const store = await create()
+    const block = b({ hello: 'world' })
+    await store.put(block)
+    same(Object.keys(store.s3.storage).length, 2)
+    await store.put(block)
+    same(Object.keys(store.s3.storage).length, 2)
+  })
+  describe('graph', () => {
+    graphTests(create, (store, ...args) => store.graph(...args))
+  })
+  describe('replicate', () => {
+    replicateTests(create)
   })
 })
 
