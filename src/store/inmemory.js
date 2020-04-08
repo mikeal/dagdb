@@ -21,7 +21,10 @@ class InMemory {
     skips.add(key)
     if (this.complete.has(key)) return { complete: true }
 
-    if (!(await this.has(cid))) return { missing: new Set([key]) }
+    if (!(await this.has(cid))) {
+      missing.add(key)
+      return { missing }
+    }
     if (cid.codec === 'raw') return { complete: true }
 
     if (depth < 0) {
