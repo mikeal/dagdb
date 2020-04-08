@@ -100,16 +100,6 @@ describe('level', () => {
   test('basics', async () => {
     await basics(create)
   })
-  /*
-  test('store block twice', async () => {
-    const store = await create()
-    const block = b({ hello: 'world' })
-    await store.put(block)
-    same(Object.keys(store.s3.storage).length, 2)
-    await store.put(block)
-    same(Object.keys(store.s3.storage).length, 2)
-  })
-  */
   describe('graph', () => {
     graphTests(create, (store, ...args) => store.graph(...args))
   })
@@ -222,16 +212,6 @@ if (!process.browser) {
     test('basics', async () => {
       await basics(create)
     })
-    /*
-    test('store block twice', async () => {
-      const store = await create()
-      const block = b({ hello: 'world' })
-      await store.put(block)
-      same(Object.keys(store.s3.storage).length, 2)
-      await store.put(block)
-      same(Object.keys(store.s3.storage).length, 2)
-    })
-    */
     describe('graph', () => {
       graphTests(create, (store, ...args) => store.graph(...args))
     })
