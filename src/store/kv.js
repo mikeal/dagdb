@@ -59,7 +59,7 @@ module.exports = Block => {
       return seen
     }
 
-    async _indexComplete (cid, seen=new Set()) {
+    async _indexComplete (cid, seen = new Set()) {
       const key = cid.toString('base32')
       const completeKeys = Array.from(seen.values()).map(key => [key, 'complete'])
       const completed = await Promise.all(completeKeys.map(key => this._hasKey(key)))

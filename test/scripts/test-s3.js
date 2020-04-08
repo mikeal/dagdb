@@ -1,12 +1,10 @@
 /* globals describe, it */
-// DAGDB_TEST_BUCKET=dagdb-test mocha test/scripts/test-s3.js -b
-const { fixtures, graphTests, replicateTests, basics } = require('../lib/storage')
+// DAGDB_TEST_BUCKET=dagdb-test mocha test/scripts/test-s3.js -b --timeout=5000
+const { graphTests, replicateTests, basics } = require('../lib/storage')
 const Block = require('@ipld/block')
 const createStore = require('../../src/store/s3')(Block)
 const { S3 } = require('aws-sdk')
 const awsConfig = require('aws-config')
-const assert = require('assert')
-const same = assert.strictDeepEqual
 
 const test = it
 
@@ -21,8 +19,6 @@ const create = () => {
   const s3 = new S3({ ...awsConfig(), params: { Bucket } })
   return createStore(s3, { keyPrefix })
 }
-
-const b = obj => Block.encoder(obj, 'dag-cbor')
 
 describe('s3', () => {
   test('basics', async () => {

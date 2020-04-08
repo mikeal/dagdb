@@ -20,7 +20,7 @@ const ls = async function * (s3, opts) {
 module.exports = Block => {
   const KVStore = createKVStore(Block)
   class S3Store extends KVStore {
-    constructor (s3, opts={}, ...args) {
+    constructor (s3, opts = {}, ...args) {
       super(opts, ...args)
       this.keyPrefix = opts.keyPrefix || ''
       this.s3 = s3
@@ -41,10 +41,12 @@ module.exports = Block => {
       try {
         resp = await this.s3.headObject({ Key }).promise()
       } catch (e) {
+        // istanbul ignore else
         if (e.statusCode === 404) return false
+        // istanbul ignore next
         throw e
       }
-      return resp
+      return { length: resp.ContentLength }
     }
 
     async _getKey (arr) {
