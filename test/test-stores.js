@@ -96,7 +96,7 @@ describe('s3', () => {
 describe('level', () => {
   const memdown = require('memdown')
   const createStore = require('../src/store/level')(Block)
-  const create = () => createStore(memdown())
+  const create = () => createStore(memdown(Math.random().toString()))
   test('basics', async () => {
     await basics(create)
   })
@@ -212,6 +212,31 @@ if (!process.browser) {
       store.has = async () => true
       result = await handler(opts)
       same(result.statusCode, 200)
+    })
+  })
+} else {
+  describe('idb', () => {
+    const idb = require('level-js')
+    const createStore = require('../src/store/level')(Block)
+    const create = () => createStore(idb(Math.random().toString()))
+    test('basics', async () => {
+      await basics(create)
+    })
+    /*
+    test('store block twice', async () => {
+      const store = await create()
+      const block = b({ hello: 'world' })
+      await store.put(block)
+      same(Object.keys(store.s3.storage).length, 2)
+      await store.put(block)
+      same(Object.keys(store.s3.storage).length, 2)
+    })
+    */
+    describe('graph', () => {
+      graphTests(create, (store, ...args) => store.graph(...args))
+    })
+    describe('replicate', () => {
+      replicateTests(create)
     })
   })
 }
