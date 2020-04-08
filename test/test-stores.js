@@ -93,6 +93,31 @@ describe('s3', () => {
   })
 })
 
+describe('level', () => {
+  const memdown = require('memdown')
+  const createStore = require('../src/store/level')(Block)
+  const create = () => createStore(memdown())
+  test('basics', async () => {
+    await basics(create)
+  })
+  /*
+  test('store block twice', async () => {
+    const store = await create()
+    const block = b({ hello: 'world' })
+    await store.put(block)
+    same(Object.keys(store.s3.storage).length, 2)
+    await store.put(block)
+    same(Object.keys(store.s3.storage).length, 2)
+  })
+  */
+  describe('graph', () => {
+    graphTests(create, (store, ...args) => store.graph(...args))
+  })
+  describe('replicate', () => {
+    replicateTests(create)
+  })
+})
+
 if (!process.browser) {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
   const stores = {}
