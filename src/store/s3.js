@@ -8,7 +8,7 @@ const ls = async function * (s3, opts) {
   do {
     data = await s3.listObjectsV2(opts).promise()
     for (const entry of data.Contents) {
-      yield entry.Key.splice(entry.Key.lastIndexOf('/') + 1)
+      yield entry.Key.slice(entry.Key.lastIndexOf('/') + 1)
     }
     if (!data.Contents.length) {
       return
@@ -20,13 +20,14 @@ const ls = async function * (s3, opts) {
 module.exports = Block => {
   const KVStore = createKVStore(Block)
   class S3Store extends KVStore {
-    constructor (s3, ...args) {
-      super(...args)
+    constructor (s3, opts={}, ...args) {
+      super(opts, ...args)
+      this.keyPrefix = opts.keyPrefix || ''
       this.s3 = s3
     }
 
     _put (arr, Body) {
-      const Key = arr.join('/')
+      const Key = this.keyPrefix + arr.join('/')
       return this.s3.putObject({ Key, Body }).promise()
     }
 
@@ -34,19 +35,26 @@ module.exports = Block => {
       return this._put(arr, empty)
     }
 
-    _hasKey (arr) {
-      const Key = arr.join('/')
-      return this.s3.hasObject({ Key }).promise()
+    async _hasKey (arr) {
+      const Key = this.keyPrefix + arr.join('/')
+      let resp
+      try {
+        resp = await this.s3.headObject({ Key }).promise()
+      } catch (e) {
+        if (e.statusCode === 404) return false
+        throw e
+      }
+      return resp
     }
 
     async _getKey (arr) {
-      const Key = arr.join('/')
+      const Key = this.keyPrefix + arr.join('/')
       const resp = await this.s3.getObject({ Key }).promise()
       return resp.Body
     }
 
     _linksFrom (key) {
-      const Prefix = [key, 'link-from'].join('/')
+      const Prefix = [this.keyPrefix + key, 'link-from'].join('/')
       return ls(this.s3, { Prefix })
     }
   }

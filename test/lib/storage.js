@@ -9,6 +9,31 @@ const b = obj => Block.encoder(obj, 'dag-cbor')
 
 const hello = () => b({ hello: 'world' })
 
+const missingBlock = Block.encoder({ test: Math.random() }, 'dag-cbor')
+
+const basics = async create => {
+  const store = await create()
+  const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
+  await store.put(block)
+  assert.ok(await store.has(await block.cid()))
+  same(await store.has(await missingBlock.cid()), false)
+  const first = await block.cid()
+  const second = await store.get(first)
+  if (!first.equals(await second.cid())) {
+    throw new Error('Store is not retaining blocks')
+  }
+  try {
+    await store.get(await missingBlock.cid())
+  } catch (e) {
+    if (e.statusCode === 404) {
+      return
+    } else {
+      throw new Error('Storage error is missing status code')
+    }
+  }
+  throw new Error('store.get() must throw when missing block')
+}
+
 let commonLeaf = async () => {
   const leaf = await hello()
   const link = await leaf.cid()
@@ -482,3 +507,4 @@ exports.fixtures = fixtures
 exports.graphTests = graphTests
 exports.replicateTests = replicateTests
 exports.hello = hello
+exports.basics = basics

@@ -1,36 +1,12 @@
 /* globals describe, it, before, after */
-const { fixtures, graphTests, replicateTests } = require('./lib/storage')
+const { fixtures, graphTests, replicateTests, basics } = require('./lib/storage')
 const Block = require('@ipld/block')
 const assert = require('assert')
 const same = assert.deepStrictEqual
 const inmem = require('../src/store/inmemory')
 const test = it
 
-const missing = Block.encoder({ test: Math.random() }, 'dag-cbor')
 const b = obj => Block.encoder(obj, 'dag-cbor')
-
-const basics = async create => {
-  const store = await create()
-  const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
-  await store.put(block)
-  assert.ok(await store.has(await block.cid()))
-  same(await store.has(await missing.cid()), false)
-  const first = await block.cid()
-  const second = await store.get(first)
-  if (!first.equals(await second.cid())) {
-    throw new Error('Store is not retaining blocks')
-  }
-  try {
-    await store.get(await missing.cid())
-  } catch (e) {
-    if (e.statusCode === 404) {
-      return
-    } else {
-      throw new Error('Storage error is missing status code')
-    }
-  }
-  throw new Error('store.get() must throw when missing block')
-}
 
 describe('inmem', () => {
   test('basic inmem', async () => {

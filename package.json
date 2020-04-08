@@ -37,6 +37,8 @@
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {
+    "aws-config": "^1.3.2",
+    "aws-sdk": "^2.655.0",
     "hundreds": "0.0.2",
     "ipld-schema": "^0.3.2",
     "mocha": "^7.1.1",
