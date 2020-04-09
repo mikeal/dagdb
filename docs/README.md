@@ -4,7 +4,7 @@ DagDB is a flexible database for distributed applications.
 
 It can store JSON, binary, and even streams of binary. You can nest
 these values withn each other or create links between pieces of data for
-efficiency and de-duplication. You can even next databases inside of other
+efficiency and de-duplication. You can even nest databases inside of other
 databases. This gives you the flexibility
 to assemble incredibly large and efficient graphs of information while
 still being able to perform efficient transactions no matter how large
