@@ -6,9 +6,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const kv = createKV(Block, codec)
 
   class Database {
-    constructor (root, store) {
+    constructor (root, store, updater) {
       readonly(this, 'root', root)
       this.store = store
+      this.updater = updater
       readonly(this, '_kv', this.getRoot().then(r => kv(r['db-v1'].kv, store)))
     }
 
@@ -48,6 +49,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async info () {
       const kv = await this._kv
       return { size: await kv.size() }
+    }
+
+    async update (...args) {
+      const newRoot = await this.updater.update(this, ...args)
+      return new Database(newRoot, this.store, this.updater)
     }
   }
 
