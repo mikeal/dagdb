@@ -110,6 +110,8 @@ if (!process.browser) {
         }
         throw new Error('function did not throw')
       }
+      const missing = Block.encoder({ test: Math.random() }, 'dag-cbor')
+      const missingKey = (await missing.cid()).toString('base32')
 
       let e = await getError({})
       same(e.message, 'Missing required param "method"')
@@ -123,6 +125,8 @@ if (!process.browser) {
       same(e.message, 'Path for block retreival must not include slashes')
       e = await getError({ method: 'PUT', path: '/cid/nope', body: Buffer.from('') })
       same(e.message, 'Path for block writes must not include slashes')
+      e = await getError({ method: 'PUT', path: `/${missingKey}`, body: Buffer.from('adsf') })
+      same(e.message, 'Block data does not match hash in CID')
       e = await getError({ method: 'HEAD', path: '/cid/nope' })
       same(e.message, 'Path for block retreival must not include slashes')
       e = await getError({ method: 'OPTIONS', path: '/test' })

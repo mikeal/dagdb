@@ -47,6 +47,9 @@ module.exports = (Block, store, depthLimit = 1024) => {
       if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
       const cid = new CID(path)
       const block = Block.create(body, cid)
+      if (!(await block.validate())) {
+        throw new Error('Block data does not match hash in CID')
+      }
       await store.put(block)
       return { statusCode: 201 }
     } else if (method === 'HEAD') {
