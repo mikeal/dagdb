@@ -5,12 +5,41 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
   const kv = createKV(Block, codec)
 
+  const Lazy {
+    constructor (db) {
+      const root = db.getRoot().then(root => root[this.prop])
+      readonly(this, '_root', root)
+      const rootData = root.then(cid => db.store.get(db)).then(block => block.decode())
+      readonly(this, 'data', rootData)
+      this.db = db
+    }
+  }
+
+  class Remotes extends Lazy {
+    get prop () {
+      return 'remotes'
+    }
+    async merge (db) {
+      // TODO: handle merging remote refs
+    }
+  }
+  class Indexes extends Lazy {
+    get prop () {
+      return 'indexes'
+    }
+    async merge (db) {
+      // TODO: handle merging indexes
+    }
+  }
+
   class Database {
     constructor (root, store, updater) {
       readonly(this, 'root', root)
       this.store = store
       this.updater = updater
       readonly(this, '_kv', this.getRoot().then(r => kv(r['db-v1'].kv, store)))
+      this.remotes = new Remotes(this)
+      this.indexes = new Indexes(this)
     }
 
     async commit () {
@@ -18,6 +47,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const latest = await kv.commit()
       const root = await this.getRoot()
       root['db-v1'].kv = latest.root
+      // TODO: overwrite with current remotes
+      // TODO: overwrite with current indexes
       const block = toBlock(root, 'Database')
       await this.store.put(block)
       return new Database(await block.cid(), this.store)
@@ -51,9 +82,24 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return { size: await kv.size() }
     }
 
+    async merge (db) {
+      const kv = await this._kv
+      await kv.merge(await db._kv)
+      await Promise.all([this.remotes.merge(db), this.indexes.merge(db)])
+    }
+
     async update (...args) {
-      const newRoot = await this.updater.update(this, ...args)
-      return new Database(newRoot, this.store, this.updater)
+      let latest = await this.commit()
+      if (latest.root.equals(this.root)) {
+        throw new Error('No changes to update')
+      }
+      let current = await this.updater.update(latest.root, this.root)
+      while (!latest.root.equals(current)) {
+        await this.merge(new Database(current, this.store, this.updater))
+        latest = await this.commit()
+        current = await this.updater.update(latest.root, current, ...args)
+      }
+      return new Database(current, this.store, this.updater)
     }
   }
 
