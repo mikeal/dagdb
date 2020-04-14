@@ -1,13 +1,15 @@
 const CID = require('cids')
 
 const lock = (self) => {
+  let _resolve
   const p = new Promise(resolve => {
-    p.unlock = () => {
-      self.lock = null
-      resolve()
-    }
+    _resolve = resolve
   })
-  return p
+  const unlock = () => {
+    self.lock = null
+    _resolve()
+  }
+  return { p, unlock }
 }
 
 class KVUpdater {
@@ -23,13 +25,17 @@ class KVUpdater {
     // load. This is why we don't use this w/ S3 and use the Dynamo
     // updater instead.
     while (this.lock) {
-      await this.lock
+      await this.lock.p
     }
     this.lock = lock(this)
-    const prev = new CID(await this.store._getKey(['root']))
-    if (!prev.equals(prevRoot || {})) {
-      this.lock.unlock()
-      return prev
+    if (!(await this.store._hasKey(['root']))) {
+      if (prevRoot) throw new Error('There is no previous root')
+    } else {
+      const prev = new CID(await this.store._getKey(['root']))
+      if (!prev.equals(prevRoot || {})) {
+        this.lock.unlock()
+        return prev
+      }
     }
     await this._update(newRoot)
     this.lock.unlock()
@@ -38,7 +44,7 @@ class KVUpdater {
 
   _update (newRoot) {
     const { buffer } = newRoot
-    return this._put(['root'], buffer)
+    return this.store._put(['root'], buffer)
   }
 }
 

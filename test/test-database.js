@@ -1,14 +1,18 @@
 /* globals it */
 const inmem = require('../src/store/inmemory')
+const createUpdater = require('../src/updater/kv')
 const { database } = require('../')
+const createKV = require('./lib/mock-kv')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
+const CID = require('cids')
 
 const create = async () => {
   const store = inmem()
-  const db = await database.create(store)
-  return { store, db }
+  const updater = createUpdater(createKV())
+  const db = await database.create(store, updater)
+  return { store, db, updater }
 }
 
 const basics = async () => {
@@ -45,4 +49,13 @@ test('links', async () => {
   const obj = await db.get('test2')
   link = await link
   same(await obj.two(), await link())
+})
+
+test('update', async () => {
+  let { db, updater } = await create()
+  await db.set('test', { hello: 'world' })
+  db = await db.update()
+  same(await db.get('test'), { hello: 'world' })
+  const root = new CID(await updater.store._getKey(['root']))
+  assert.ok(root.equals(db.root))
 })

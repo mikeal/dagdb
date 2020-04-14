@@ -122,11 +122,12 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes: hamtCID } }, 'Database')
   })()
   exports.empties = [empty, ...kv.empties]
-  exports.create = async store => {
+  exports.create = async (store, updater) => {
     const empties = await Promise.all(exports.empties)
     await Promise.all(empties.map(b => store.put(b)))
     const root = await empties[0].cid()
-    return new Database(root, store)
+    await updater.update(root)
+    return new Database(root, store, updater)
   }
   return exports
 }
