@@ -5,11 +5,11 @@ module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
   const kv = createKV(Block, codec)
 
-  const Lazy {
+  class Lazy {
     constructor (db) {
-      const root = db.getRoot().then(root => root[this.prop])
+      const root = db.getRoot().then(root => root['db-v1'][this.prop])
       readonly(this, '_root', root)
-      const rootData = root.then(cid => db.store.get(db)).then(block => block.decode())
+      const rootData = root.then(cid => db.store.get(cid)).then(block => block.decode())
       readonly(this, 'data', rootData)
       this.db = db
     }
@@ -19,16 +19,26 @@ module.exports = (Block, codec = 'dag-cbor') => {
     get prop () {
       return 'remotes'
     }
+
     async merge (db) {
       // TODO: handle merging remote refs
+    }
+    async commit () {
+      // TODO: implement commit process for remote refs
+      return this._root
     }
   }
   class Indexes extends Lazy {
     get prop () {
       return 'indexes'
     }
+
     async merge (db) {
       // TODO: handle merging indexes
+    }
+    async update (latest) {
+      // TODO: implement index update process
+      return this._root
     }
   }
 
@@ -47,8 +57,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const latest = await kv.commit()
       const root = await this.getRoot()
       root['db-v1'].kv = latest.root
-      // TODO: overwrite with current remotes
-      // TODO: overwrite with current indexes
+      root['db-v1'].remotes = await this.remotes.commit()
+      root['db-v1'].indexes = await this.indexes.update(latest.root)
       const block = toBlock(root, 'Database')
       await this.store.put(block)
       return new Database(await block.cid(), this.store)
@@ -85,7 +95,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async merge (db) {
       const kv = await this._kv
       await kv.merge(await db._kv)
-      await Promise.all([this.remotes.merge(db), this.indexes.merge(db)])
+      await this.remotes.merge(db)
     }
 
     async update (...args) {
