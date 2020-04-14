@@ -87,6 +87,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
       this.cache = new Map()
     }
 
+    get pending () {
+      return this.cache.size
+    }
+
     async __encode (block) {
       if (!isBlock(block)) {
         let last

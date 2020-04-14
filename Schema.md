@@ -68,34 +68,49 @@ type Transaction union {
   | TransactionV1 "kv-v1"
 } representation keyed
 ```
-
-# Secondary Key Value Index
-
-This is just a HAMT built from a path read on a primary store.
-
-Essentially, it provides a secondary key lookup that returns as many
-values as match the path value.
+# Index
 
 ```sh
-type SecondaryKeyValueIndex struct {
-  path String
-  head &Transaction
-  index &HashMapRoot
-  rmap &HashMapRoot
+type Paths [String]
+type Reduces [String]
+type MapFunction string
+
+type UnorderedKeyedIndexTransform union {
+  | Paths list
+  | MapFunction string
+} representation kinded
+
+type UnorderedKeyedIndexValue struct {
+  values &HashMapRoot
+  reduced optional map
+} representation tuple
+
+type UnorderedIndexOperation struct {
+  op &SetOperation
+  transform &UnorderedKeyedIndexTransform
+  value Link
+  reduces optional Reduces
+}
+type IndexUnion union {
+  | &HashMapRoot "uki"
+} representation keyed
+
+type IndexInfoUnion union {
+  | &UnorderedKeyedIndexInfo "uki"
+} representation keyed
+
+type Index struct {
+  head &HashMapRoot # local KV root
+  rmap &HashMapRoot # map of KV entries to indexes transactions
+  index IndexUnion
+  info IndexInfoUnion
 }
 ```
-
-`head` is the DagDB transaction head for the primary store.
-
-`index` is the stored secondary index. The key being the secondary
-key and the value being *another* HashMapRoot. The keys in the final
-HAMT are the keys from the original data pointing at the full value.
 
 `rmap` is a HAMT that maps the primary key data to the resolved secondary
 index. This way, if the value for the secondary index is modified or the
 value removed from the primary store the index can be updated to reflect
-the new state. The keys are multibase(base64) cid's of the original data
-and the value is the string value for the secondary index key.
+the new state.
 
 # DagDB Type
 
@@ -125,6 +140,28 @@ DagDB's value loader walks decoded blocks and replaces the referenced
 values with instances of the relevant types and validates them against
 the referenced schemas. This effectively means that `"_dagdb"` is a
 reserved key *at any depth* with very few exceptions.
+
+# Remote
+
+```sh
+type FullMerge bool # must be true
+type KeyedMerge string
+type RemoteMergeStrategy union {
+  | FullMerge "full"
+  | KeyedMerge "keyed"
+} representation keyed
+
+type RemoteInfo struct {
+  strategy RemoteMergeStrategy
+  url String
+}
+
+type Remote struct {
+  info &RemoteInfo
+  head &HashMapRoot # remote KV root
+  merged &HashMapRoot # local KV root
+}
+```
 
 # Database
 
