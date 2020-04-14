@@ -23,6 +23,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async merge (db) {
       // TODO: handle merging remote refs
     }
+
     async commit () {
       // TODO: implement commit process for remote refs
       return this._root
@@ -33,9 +34,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return 'indexes'
     }
 
-    async merge (db) {
-      // TODO: handle merging indexes
-    }
     async update (latest) {
       // TODO: implement index update process
       return this._root
@@ -53,12 +51,14 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async commit () {
-      const kv = await this._kv
-      const latest = await kv.commit()
+      let kv = await this._kv
+      if (kv.pending) {
+        kv = await kv.commit()
+      }
       const root = await this.getRoot()
-      root['db-v1'].kv = latest.root
+      root['db-v1'].kv = kv.root
       root['db-v1'].remotes = await this.remotes.commit()
-      root['db-v1'].indexes = await this.indexes.update(latest.root)
+      root['db-v1'].indexes = await this.indexes.update(kv.root)
       const block = toBlock(root, 'Database')
       await this.store.put(block)
       return new Database(await block.cid(), this.store)
@@ -94,7 +94,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async merge (db) {
       const kv = await this._kv
-      await kv.merge(await db._kv)
+      await kv.pull(await db._kv)
       await this.remotes.merge(db)
     }
 
