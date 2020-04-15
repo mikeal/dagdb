@@ -12,7 +12,7 @@ const hello = () => b({ hello: 'world' })
 const missingBlock = Block.encoder({ test: Math.random() }, 'dag-cbor')
 
 const basics = async create => {
-  const store = await create()
+  const store = await create({ lru: false })
   const block = Block.encoder({ hello: 'world' }, 'dag-cbor')
   await store.put(block)
   assert.ok(await store.has(await block.cid()))

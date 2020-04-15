@@ -37,6 +37,7 @@
     "ipld-schema-validation": "0.3.4",
     "level-js": "^5.0.2",
     "levelup": "^4.3.2",
+    "lru-cache": "^5.1.1",
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {

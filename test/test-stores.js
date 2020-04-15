@@ -1,12 +1,39 @@
 /* globals describe, it, before, after */
 const { fixtures, graphTests, replicateTests, basics } = require('./lib/storage')
 const Block = require('@ipld/block')
+const LRUStore = require('../src/store/lru')
 const assert = require('assert')
 const same = assert.deepStrictEqual
 const inmem = require('../src/store/inmemory')
 const test = it
 
 const b = obj => Block.encoder(obj, 'dag-cbor')
+
+describe('lru', () => {
+  const only = Block.encoder({ hello: 'world' }, 'dag-cbor')
+  class TestStore extends LRUStore {
+    _putBlock () {
+    }
+
+    _getBlock (cid) {
+      return Block.encoder({ hello: 'world' }, 'dag-cbor')
+    }
+  }
+  test('get', async () => {
+    const store = new TestStore()
+    const cid = await only.cid()
+    const block = await store.get(cid)
+    assert.ok(cid.equals(await block.cid()))
+    same(store.lru.length, 13)
+    same(block, await store.get(cid))
+  })
+  test('put', async () => {
+    const store = new TestStore()
+    await store.put(only)
+    await store.put(only)
+    same(store.lru.length, 13)
+  })
+})
 
 describe('inmem', () => {
   test('basic inmem', async () => {
@@ -55,7 +82,7 @@ describe('kv', () => {
     await basics(create)
   })
   test('store block twice', async () => {
-    const store = await create()
+    const store = await create({ lru: false })
     const block = b({ hello: 'world' })
     await store.put(block)
     same(Object.keys(store.storage).length, 2)
@@ -73,12 +100,12 @@ describe('kv', () => {
 describe('s3', () => {
   const createS3 = require('./lib/mock-s3')
   const createStore = require('../src/store/s3')(Block)
-  const create = () => createStore(createS3())
+  const create = opts => createStore(createS3(), opts)
   test('basics', async () => {
     await basics(create)
   })
   test('store block twice', async () => {
-    const store = await create()
+    const store = await create({ lru: false })
     const block = b({ hello: 'world' })
     await store.put(block)
     same(Object.keys(store.s3.storage).length, 2)
@@ -136,11 +163,11 @@ if (!process.browser) {
       })
     }))
     const createStore = require('../src/store/https')(Block)
-    const create = () => {
+    const create = (opts) => {
       const id = Math.random().toString()
       const url = `http://localhost:${port}?id=${id}`
       stores[id] = inmem()
-      const store = createStore(url)
+      const store = createStore(url, opts)
       return store
     }
     test('basics', async () => {
@@ -169,9 +196,9 @@ if (!process.browser) {
       })
     }))
     const createStore = require('../src/store/https')(Block)
-    const create = () => {
+    const create = (opts) => {
       const url = `http://localhost:${port}`
-      return createStore(url)
+      return createStore(url, opts)
     }
     test('basics', async () => {
       await basics(create)
@@ -208,7 +235,7 @@ if (!process.browser) {
   describe('idb', () => {
     const idb = require('level-js')
     const createStore = require('../src/store/level')(Block)
-    const create = () => createStore(idb(Math.random().toString()))
+    const create = (opts) => createStore(idb(Math.random().toString()), opts)
     test('basics', async () => {
       await basics(create)
     })

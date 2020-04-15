@@ -1,7 +1,8 @@
 const CID = require('cids')
+const LRUStore = require('./lru')
 
 module.exports = Block => {
-  class KVStore {
+  class KVStore extends LRUStore {
     async graph (cid, depth = 1024, missing = new Set(), incomplete = new Set(), skips = new Set()) {
       const key = cid.toString('base32')
 
@@ -67,7 +68,7 @@ module.exports = Block => {
       if (complete) await this._putKey([key, 'complete'])
     }
 
-    async put (block) {
+    async _putBlock (block) {
       const cid = await block.cid()
       if (await this.has(cid)) return
       const seen = await this._indexLinks(cid, block)
@@ -75,11 +76,11 @@ module.exports = Block => {
       await this._indexComplete(cid, seen)
     }
 
-    has (cid) {
+    _hasBlock (cid) {
       return this._hasKey([cid.toString('base32'), 'encode'])
     }
 
-    async get (cid) {
+    async _getBlock (cid) {
       const key = cid.toString('base32')
       const data = await this._getKey([key, 'encode'])
       return Block.create(data, cid)
