@@ -110,3 +110,12 @@ test('error: empty updater write', async () => {
   }
   assert.ok(threw)
 })
+
+/*
+if (!process.browser) {
+  test('remote pull', async () => {
+    const { db } = await create()
+    // await db.remote.add('testRemote',)
+  })
+}
+*/

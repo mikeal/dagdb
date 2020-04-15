@@ -9,9 +9,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     constructor (db) {
       const root = db.getRoot().then(root => root['db-v1'][this.prop])
       readonly(this, '_root', root)
-      const rootData = root.then(cid => db.store.get(cid)).then(block => block.decode())
-      readonly(this, 'data', rootData)
       this.db = db
+      this.pending = new Map()
+      this.store = db.store
+      this._get = db.store.bind(db)
     }
   }
 
@@ -20,11 +21,41 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return 'remotes'
     }
 
+    async add (name, info) {
+      const block = toBlock(info, 'RemoteInfo')
+      const remote = new Remote(info)
+      return this.pull(remote)
+    }
+
+    async get (name) {
+      const block = await hamt.get(this.root, name, this._get)
+      const decoded = fromBlock(block, 'Remote')
+      return new Remote(decoded)
+    }
+
+    async pull (remote) {
+      if (typeof remote === 'string') {
+        remote = await this.get(remote)
+      }
+      throw new Error('left off here')
+      const data = await this.data
+      console.log(data)
+    }
+
     async merge (db) {
       // TODO: handle merging remote refs
     }
 
     async commit () {
+      const ops = {}
+      for (const [key, block] of this.pending.entries()) {
+
+      }
+let last
+          for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block, codec)) {
+                  last = block
+                  yield block
+                }
       // TODO: implement commit process for remote refs
       return this._root
     }
