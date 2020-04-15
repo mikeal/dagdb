@@ -29,14 +29,15 @@
   "dependencies": {
     "@ipld/block": "^4.0.0",
     "@ipld/fbl": "0.0.2",
-    "bent": "^7.1.2",
+    "bent": "^7.3.0",
     "charwise": "^3.0.1",
-    "datastore-car": "ipld/js-datastore-car#drop-eth",
+    "datastore-car": "^1.1.4",
     "encoding-down": "^6.3.0",
     "iamap": "^0.7.0",
     "ipld-schema-validation": "0.3.4",
     "level-js": "^5.0.2",
-    "levelup": "^4.3.2",
+    "levelup": "^4.4.0",
+    "lru-cache": "^5.1.1",
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {

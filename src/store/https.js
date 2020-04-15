@@ -1,8 +1,10 @@
 const bent = require('bent')
+const LRUStore = require('./lru')
 
 module.exports = Block => {
-  class HttpsStore {
-    constructor (baseurl) {
+  class HttpsStore extends LRUStore {
+    constructor (baseurl, opts) {
+      super(opts)
       let url
       let params
       if (baseurl.includes('?')) {
@@ -28,18 +30,18 @@ module.exports = Block => {
       return u
     }
 
-    async get (cid) {
+    async _getBlock (cid) {
       const data = await this._getBuffer(this.mkurl(cid.toString('base32')))
       return Block.create(data, cid)
     }
 
-    async put (block) {
+    async _putBlock (block) {
       const cid = await block.cid()
       const url = this.mkurl(cid.toString('base32'))
       return this._put(url, block.encodeUnsafe())
     }
 
-    async has (cid) {
+    async _hasBlock (cid) {
       const resp = await this._head(this.mkurl(cid.toString('base32')))
       if (resp.statusCode === 200) return true
       else return false
