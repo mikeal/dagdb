@@ -232,7 +232,8 @@ if (!process.browser) {
     })
   })
 } else {
-  describe('idb', () => {
+  describe('idb', function () {
+    this.timeout(8000)
     const idb = require('level-js')
     const createStore = require('../src/store/level')(Block)
     const create = (opts) => createStore(idb(Math.random().toString()), opts)
