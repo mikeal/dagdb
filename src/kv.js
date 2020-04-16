@@ -223,6 +223,9 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     async pull (trans, known = [], resolver = noResolver) {
+      if (trans._kv) {
+        return this.pull(await trans._kv, known, resolver)
+      }
       // we need to make all the cached blocks accessible
       // to the resolver
       const _blocks = new Map()

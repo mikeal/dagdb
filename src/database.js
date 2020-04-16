@@ -66,11 +66,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
         return kv.set(key, db.root)
       }
       const prev = await kv.get(key)
-      const remoteKV = await db._kv
-      await prev.pull(remoteKV, known)
+      await prev.pull(kv, known)
       const latest = await prev.commit()
       kv.set(key, latest.root)
-      this.rootDecode.head = await remoteKV.getHead()
+      this.rootDecode.head = await prev.getHead()
       this.rootDecode.merged = await kv.getHead()
     }
 
@@ -133,8 +132,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       if (!remote) {
         remote = await this.get(name)
       }
-      const kv = await this._kv
-      await remote.pull(kv)
+      await remote.pull()
       this.pending.set(name, remote)
     }
 
@@ -181,6 +179,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
       this.indexes = new Indexes(this)
     }
 
+    get _dagdb () {
+      return { v1: 'database' }
+    }
+
     async commit () {
       let kv = await this._kv
       if (kv.pending) {
@@ -193,6 +195,16 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const block = toBlock(root, 'Database')
       await this.store.put(block)
       return new Database(await block.cid(), this.store)
+    }
+
+    async getHead () {
+      const kv = await this._kv
+      return kv.getHead()
+    }
+
+    async pull (...args) {
+      const kv = await this._kv
+      return kv.pull(...args)
     }
 
     async get (...args) {
@@ -225,7 +237,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async merge (db) {
       const kv = await this._kv
-      await kv.pull(await db._kv)
+      await kv.pull(db)
     }
 
     async update (...args) {
