@@ -222,7 +222,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return root['kv-v1'].head
     }
 
-    async pull (trans, resolver = noResolver) {
+    async pull (trans, known = [], resolver = noResolver) {
       // we need to make all the cached blocks accessible
       // to the resolver
       const _blocks = new Map()
@@ -238,7 +238,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const oldRoot = this.root
       const newRoot = trans.root
       const stackedGet = createGet(local, remote)
-      const staged = await replicate(oldRoot, newRoot, stackedGet, resolver)
+      const staged = await replicate(oldRoot, newRoot, stackedGet, resolver, known)
       // now merge the latest options for each key from the remote
       // into the local cache for the transaction
       for (const [key, [op, block]] of staged.entries()) {
@@ -317,10 +317,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return ops
   }
 
-  const replicate = async (oldRoot, newRoot, get, resolver) => {
+  const replicate = async (oldRoot, newRoot, get, resolver, known = []) => {
     oldRoot = await get(oldRoot)
     newRoot = await get(newRoot)
-    const seen = new Set()
+    const seen = new Set(known.map(cid => cid.toString('base64')))
 
     const find = root => {
       const decoded = fromBlock(root, 'Transaction')

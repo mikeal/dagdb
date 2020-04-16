@@ -1,9 +1,93 @@
 const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
+const createStore = require('./store')
+const hamt = require('./hamt')
+const CID = require('cids')
+const bent = require('bent')
+const getJSON = bent('json')
 
 module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
   const kv = createKV(Block, codec)
+  const store = createStore(Block)
+
+  class Remote {
+    constructor (obj, db) {
+      if (!obj.info) throw new Error('Missing remote info')
+      let info
+      if (CID.isCID(obj.info)) {
+        info = db.store.get(obj.info).then(block => block.decodeUnsafe())
+      } else {
+        info = new Promise(resolve => resolve(info))
+      }
+      this.db = db
+      this.info = info
+      this.rootDecode = obj
+      this.kv = db._kv
+    }
+
+    async pull () {
+      const info = await this.info
+      if (info.source === 'local') {
+        throw new Error('Local remotes must use pullDatabase directly')
+      }
+      const resp = await getJSON(info.source)
+      // TODO: validate response data against a schema
+      const known = []
+      const root = new CID(resp.root)
+      if (this.rootDecode.head) {
+        if (root.equals(this.rootDecode.head)) {
+          return root // no changes since last merge
+        }
+        known.push(this.rootDecode.head)
+        known.push(this.rootDecode.merged)
+      }
+      this.store = await store.from(resp.blockstore)
+      const database = new Database(root, this.store)
+      return this.pullDatabase(database, info.strategy, known)
+    }
+
+    async pullDatabase (database, known = []) {
+      const kv = await this.kv
+      const info = await this.info
+      const strategy = info.strategy
+      // istanbul ignore else
+      if (strategy.full) {
+        return this.fullMerge(kv, database, known)
+      } else if (strategy.keyed) {
+        return this.keyedMerge(kv, database, strategy.keyed, known)
+      } else {
+        throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
+      }
+    }
+
+    async keyedMerge (kv, db, key, known = []) {
+      if (!(await kv.has(key))) {
+        return kv.set(key, db.root)
+      }
+      const prev = await kv.get(key)
+      const remoteKV = await db._kv
+      await prev.pull(remoteKV, known)
+      const latest = await prev.commit()
+      kv.set(key, latest.root)
+      this.rootDecode.head = await remoteKV.getHead()
+      this.rootDecode.merged = await kv.getHead()
+    }
+
+    async fullMerge (kv, db, known = []) {
+      const remoteKV = await db._kv
+      await kv.pull(remoteKV, known)
+      this.rootDecode.head = await remoteKV.getHead()
+      this.rootDecode.merged = null
+    }
+
+    async update (latest) {
+      const trans = await this.db.store.get(latest)
+      const head = trans.decode()['kv-v1'].head
+      this.rootDecode.merged = head
+      return toBlock(this.rootDecode, 'Remote')
+    }
+  }
 
   class Lazy {
     constructor (db) {
@@ -12,7 +96,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       this.db = db
       this.pending = new Map()
       this.store = db.store
-      this._get = db.store.bind(db)
+      this._get = db.store.get.bind(db.store)
     }
   }
 
@@ -23,43 +107,59 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async add (name, info) {
       const block = toBlock(info, 'RemoteInfo')
-      const remote = new Remote(info)
-      return this.pull(remote)
+      await this.db.store.put(block)
+      const remote = new Remote({ info: await block.cid() }, this.db)
+      return this.pull(name, remote)
+    }
+
+    async addLocal (name, strategy) {
+      const info = { strategy, source: 'local' }
+      const block = toBlock(info, 'RemoteInfo')
+      await this.db.store.put(block)
+      const remote = new Remote({ info: await block.cid() }, this.db)
+      this.pending.set(name, remote)
+      return remote
     }
 
     async get (name) {
-      const block = await hamt.get(this.root, name, this._get)
+      const root = await this._root
+      const cid = await hamt.get(root, name, this._get)
+      const block = await this.db.store.get(cid)
       const decoded = fromBlock(block, 'Remote')
-      return new Remote(decoded)
+      return new Remote(decoded, this.db)
     }
 
-    async pull (remote) {
-      if (typeof remote === 'string') {
-        remote = await this.get(remote)
+    async pull (name, remote) {
+      if (!remote) {
+        remote = await this.get(name)
       }
-      throw new Error('left off here')
-      const data = await this.data
-      console.log(data)
+      const kv = await this._kv
+      await remote.pull(kv)
+      this.pending.set(name, remote)
     }
 
-    async merge (db) {
-      // TODO: handle merging remote refs
-    }
-
-    async commit () {
-      const ops = {}
-      for (const [key, block] of this.pending.entries()) {
-
+    async update (latest) {
+      if (!this.pending.size) return this._root
+      const ops = []
+      const promises = []
+      for (const [key, remote] of this.pending.entries()) {
+        // TODO: implement remote removal
+        const block = await remote.update(latest)
+        promises.push(this.db.store.put(block))
+        ops.push({ set: { key, val: await block.cid() } })
       }
-let last
-          for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block, codec)) {
-                  last = block
-                  yield block
-                }
-      // TODO: implement commit process for remote refs
-      return this._root
+      let last
+      const head = await this.db._kv.then(kv => kv.getHead())
+      const get = this.db.store.get.bind(this.db.store)
+      for await (const block of hamt.bulk(head, ops, get, Block, codec)) {
+        last = block
+        promises.push(this.db.store.put(block))
+      }
+      await Promise.all(promises)
+      return last.cid()
     }
   }
+
   class Indexes extends Lazy {
     get prop () {
       return 'indexes'
@@ -88,7 +188,7 @@ let last
       }
       const root = await this.getRoot()
       root['db-v1'].kv = kv.root
-      root['db-v1'].remotes = await this.remotes.commit()
+      root['db-v1'].remotes = await this.remotes.update(kv.root)
       root['db-v1'].indexes = await this.indexes.update(kv.root)
       const block = toBlock(root, 'Database')
       await this.store.put(block)
@@ -126,7 +226,6 @@ let last
     async merge (db) {
       const kv = await this._kv
       await kv.pull(await db._kv)
-      await this.remotes.merge(db)
     }
 
     async update (...args) {
