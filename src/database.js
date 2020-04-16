@@ -2,9 +2,23 @@ const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
 const createStore = require('./store')
 const hamt = require('./hamt')
+const replicate = require('./store/replicate')
 const CID = require('cids')
 const bent = require('bent')
 const getJSON = bent('json')
+
+const databaseEncoder = async function * (db) {
+  const kv = await db._kv
+  if (kv.pending) throw new Error('Cannot use database with pending transactions as a value')
+  // TODO: refactor to support encoding dirty databases
+  // if you look at how .commit() is implemented in kv, it's
+  // implemented as a generator and then flattened for the
+  // .commit() method. that approach should be used here as well,
+  // with all the commit() and latest() implementations below done as
+  // generators that can be used by this encoder so that you can
+  // use databases with pending transactions as values.
+  yield db.root
+}
 
 module.exports = (Block, codec = 'dag-cbor') => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
@@ -51,26 +65,36 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const kv = await this.kv
       const info = await this.info
       const strategy = info.strategy
+      let cids
       // istanbul ignore else
       if (strategy.full) {
-        return this.fullMerge(kv, database, known)
+        cids = await this.fullMerge(kv, database, known)
       } else if (strategy.keyed) {
-        return this.keyedMerge(kv, database, strategy.keyed, known)
+        cids = await this.keyedMerge(kv, database, strategy.keyed, known)
       } else {
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
+      }
+      for (const cid of cids) {
+        await replicate(cid, database.store, this.db.store)
       }
     }
 
     async keyedMerge (kv, db, key, known = []) {
       if (!(await kv.has(key))) {
-        return kv.set(key, db.root)
+        await kv.set(key, db)
+      } else {
+        const prev = await kv.get(key)
+        const prevHead = await prev.getHead()
+        const dbHead = await db.getHead()
+        if (prevHead.equals(dbHead)) return []
+        await prev.pull(kv, known)
+        const latest = await prev.commit()
+        await kv.set(key, latest)
       }
-      const prev = await kv.get(key)
-      await prev.pull(kv, known)
-      const latest = await prev.commit()
-      kv.set(key, latest.root)
-      this.rootDecode.head = await prev.getHead()
-      this.rootDecode.merged = await kv.getHead()
+      const latest = await kv.commit()
+      this.rootDecode.head = await db.getHead()
+      this.rootDecode.merged = await latest.getHead()
+      return [latest.root]
     }
 
     async fullMerge (kv, db, known = []) {
@@ -78,12 +102,15 @@ module.exports = (Block, codec = 'dag-cbor') => {
       await kv.pull(remoteKV, known)
       this.rootDecode.head = await remoteKV.getHead()
       this.rootDecode.merged = null
+      return kv.pendingTransactions()
     }
 
     async update (latest) {
-      const trans = await this.db.store.get(latest)
-      const head = trans.decode()['kv-v1'].head
-      this.rootDecode.merged = head
+      if (this.rootDecode.merged === null) {
+        const trans = await this.db.store.get(latest)
+        const head = trans.decode()['kv-v1'].head
+        this.rootDecode.merged = head
+      }
       return toBlock(this.rootDecode, 'Remote')
     }
   }
@@ -238,6 +265,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async merge (db) {
       const kv = await this._kv
       await kv.pull(db)
+    }
+
+    encode () {
+      return databaseEncoder(this)
     }
 
     async update (...args) {

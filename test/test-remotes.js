@@ -40,9 +40,53 @@ test('nothing to merge', async () => {
 })
 
 test('full merge', async () => {
+  let { db1, db2, remote } = await createRemotes({ full: true })
+  await db2.set('test', { hello: 'world' })
+  db2 = await db2.commit()
+  await remote.pullDatabase(db2)
+  const latest = await db1.update()
+  const kv1 = (await latest._kv).root
+  const kv2 = (await db2._kv).root
+  ok(kv1.equals(kv2))
+  remote = await latest.remotes.get('test')
+  await remote.pullDatabase(db2)
+  const oldroot = latest.root
+  let threw = true
+  try {
+    latest = await latest.update()
+    threw = false
+  } catch (e) {
+    if (e.message !== 'No changes to update') throw e
+  }
+  ok(threw)
+  same(await latest.get('test'), { hello: 'world' })
 })
 
 test('keyed merge', async () => {
+  let { db1, db2, remote } = await createRemotes({ keyed: 'test-db' })
+  const oldroot = db1.root
+  await db2.set('test', { hello: 'world' })
+  db2 = await db2.commit()
+  await remote.pullDatabase(db2)
+  db1 = await db1.update()
+  const kv1 = (await db2._kv).root
+  const latestDB = await db1.get('test-db')
+  const kv2 = (await latestDB._kv).root
+  ok(kv1.equals(kv2))
+  same(await latestDB.get('test'), { hello: 'world' })
+  remote = await db1.remotes.get('test')
+  await remote.pullDatabase(db2)
+  let threw = true
+  try {
+    await db1.update()
+    threw = false
+  } catch (e) {
+    if (e.message !== 'No changes to update') throw e
+  }
+  ok(threw)
+
+  const dbValue = await db1.get('test-db')
+  same(await dbValue.get('test'), { hello: 'world' })
 })
 
 describe('http', () => {

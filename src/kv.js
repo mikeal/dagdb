@@ -107,13 +107,17 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async link (block) {
       block = await this.__encode(block)
       const cid = await block.cid()
-      return decode(cid, this.store)
+      return decode(cid, this.store, this.updater)
     }
 
     async set (key, block) {
       block = await this.__encode(block)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
+    }
+
+    async pendingTransactions () {
+      return Promise.all(Array.from(this.cache.values()).map(x => x[0].cid()))
     }
 
     async del (key) {
@@ -172,7 +176,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       const block = await this.getBlock(key)
-      return decode(block.decode(), this.store)
+      return decode(block.decode(), this.store, this.updater)
     }
 
     async has (key) {
@@ -208,9 +212,12 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return new Transaction(await last.cid(), this.store)
     }
 
+    _encode () {
+      return commitTransaction(this)
+    }
     encode () {
       if (!this.cache.size) return (async function * (r) { yield r })(this.root)
-      return encoderTransaction(commitTransaction(this))
+      return encoderTransaction(this._encode())
     }
 
     get _dagdb () {
