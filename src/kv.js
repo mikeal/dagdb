@@ -386,6 +386,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return new Transaction(root, store)
   }
   register('transaction', exports)
+  exports.register = register
   return exports
 }
 module.exports.createGet = createGet

@@ -39,5 +39,11 @@ test('nothing to merge', async () => {
   ok(decoded.head.equals(decoded.merged))
 })
 
+test('full merge', async () => {
+})
+
+test('keyed merge', async () => {
+})
+
 describe('http', () => {
 })

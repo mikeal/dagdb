@@ -271,5 +271,6 @@ module.exports = (Block, codec = 'dag-cbor') => {
     await updater.update(root)
     return new Database(root, store, updater)
   }
+  kv.register('database', exports)
   return exports
 }
