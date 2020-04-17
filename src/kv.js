@@ -215,6 +215,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     _encode () {
       return commitTransaction(this)
     }
+
     encode () {
       if (!this.cache.size) return (async function * (r) { yield r })(this.root)
       return encoderTransaction(this._encode())

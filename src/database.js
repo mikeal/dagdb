@@ -47,30 +47,31 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
       const resp = await getJSON(info.source)
       // TODO: validate response data against a schema
-      const known = []
       const root = new CID(resp.root)
       if (this.rootDecode.head) {
         if (root.equals(this.rootDecode.head)) {
           return root // no changes since last merge
         }
-        known.push(this.rootDecode.head)
-        known.push(this.rootDecode.merged)
       }
       this.store = await store.from(resp.blockstore)
       const database = new Database(root, this.store)
-      return this.pullDatabase(database, info.strategy, known)
+      return this.pullDatabase(database, info.strategy)
     }
 
-    async pullDatabase (database, known = []) {
-      const kv = await this.kv
+    async pullDatabase (database) {
       const info = await this.info
       const strategy = info.strategy
+      const known = []
+      if (this.rootDecode.head) {
+        known.push(this.rootDecode.head)
+        known.push(this.rootDecode.merged)
+      }
       let cids
       // istanbul ignore else
       if (strategy.full) {
-        cids = await this.fullMerge(kv, database, known)
+        cids = await this.fullMerge(database, known)
       } else if (strategy.keyed) {
-        cids = await this.keyedMerge(kv, database, strategy.keyed, known)
+        cids = await this.keyedMerge(database, strategy.keyed, known)
       } else {
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
       }
@@ -79,7 +80,8 @@ module.exports = (Block, codec = 'dag-cbor') => {
       }
     }
 
-    async keyedMerge (kv, db, key, known = []) {
+    async keyedMerge (db, key, known) {
+      const kv = await this.kv
       if (!(await kv.has(key))) {
         await kv.set(key, db)
       } else {
@@ -87,7 +89,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
         const prevHead = await prev.getHead()
         const dbHead = await db.getHead()
         if (prevHead.equals(dbHead)) return []
-        await prev.pull(kv, known)
+        await prev.pull(db, known)
         const latest = await prev.commit()
         await kv.set(key, latest)
       }
@@ -97,10 +99,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return [latest.root]
     }
 
-    async fullMerge (kv, db, known = []) {
-      const remoteKV = await db._kv
-      await kv.pull(remoteKV, known)
-      this.rootDecode.head = await remoteKV.getHead()
+    async fullMerge (db, known) {
+      const kv = await this.kv
+      await kv.pull(db, known)
+      this.rootDecode.head = await db.getHead()
       this.rootDecode.merged = null
       return kv.pendingTransactions()
     }
@@ -157,7 +159,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async pull (name, remote) {
       if (!remote) {
-        remote = await this.get(name)
+        remote = await this.remotes.get(name)
       }
       await remote.pull()
       this.pending.set(name, remote)
