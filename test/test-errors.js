@@ -101,7 +101,7 @@ if (!process.browser) {
   describe('http', () => {
     const store = inmem()
     test('http storage handler', async () => {
-      const handler = require('../src/http/store/handler')(Block, store)
+      const handler = require('../src/http/blockstore')(Block, store)
       const getError = async (...args) => {
         try {
           await handler(...args)
@@ -139,7 +139,7 @@ if (!process.browser) {
     })
     const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
     const port = getPort()
-    const handler = require('../src/http/store/nodejs')(Block, store)
+    const handler = require('../src/http/nodejs').blockstore(Block, store)
     const server = require('http').createServer(handler)
     const closed = new Promise(resolve => server.once('close', resolve))
 

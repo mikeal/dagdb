@@ -139,7 +139,7 @@ if (!process.browser) {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
   const stores = {}
 
-  const createNodejsHandler = require('../src/http/store/nodejs')
+  const createNodejsHandler = require('../src/http/nodejs').blockstore
 
   const handler = async (req, res) => {
     const parsed = new URL('http://asdf' + req.url)
@@ -216,7 +216,7 @@ if (!process.browser) {
     })
   })
   describe('http handler', () => {
-    const createHandler = require('../src/http/store/handler')
+    const createHandler = require('../src/http/blockstore')
     test('head', async () => {
       const store = inmem()
       const handler = createHandler(Block, store)

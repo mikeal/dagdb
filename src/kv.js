@@ -328,7 +328,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return ops
   }
 
-  const replicate = async (oldRoot, newRoot, get, resolver, known = []) => {
+  const replicate = async (oldRoot, newRoot, get, resolver, known) => {
     oldRoot = await get(oldRoot)
     newRoot = await get(newRoot)
     const seen = new Set(known.map(cid => cid.toString('base64')))
