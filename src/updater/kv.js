@@ -18,6 +18,10 @@ class KVUpdater {
     this.lock = null
   }
 
+  get root () {
+    return this.store._getKey(['root']).then(buff => new CID(buff))
+  }
+
   async update (newRoot, prevRoot) {
     // Note: this implementation assumes you have a lock on the
     // underlying kv store. If you don't, this code is prone

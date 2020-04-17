@@ -1,5 +1,4 @@
-const createBlockstoreHandler = require('./blockstore')
-const createUpdaterHandler = require('./updater')
+const { blockstore, info, updater } = require('./handlers')
 
 const getBody = stream => new Promise((resolve, reject) => {
   const buffers = []
@@ -24,10 +23,13 @@ const handler = async (req, res, _handler) => {
   res.end(result.body)
 }
 
-const createHandler = (Block, store, updater, depthLimit) => {
-  const blockstoreHandler = createBlockstoreHandler(Block, store, depthLimit)
-  const updaterHandler = createUpdaterHandler(Block, updater)
+const createHandler = (Block, store, _updater, infoOpts = {}) => {
+  const blockstoreHandler = blockstore(Block, store)
+  const updaterHandler = updater(Block, _updater)
   const _handler = (req, res) => {
+    if (req.url === '/') {
+      return info(store, updater)
+    }
     if (req.url.startsWith('/blockstore/')) {
       req.url = req.url.slice('/blockstore/'.length)
       return handler(req, res, blockstoreHandler)
@@ -44,10 +46,10 @@ const createHandler = (Block, store, updater, depthLimit) => {
 
 module.exports = createHandler
 module.exports.blockstore = (...args) => {
-  const _handler = createBlockstoreHandler(...args)
+  const _handler = blockstore(...args)
   return (req, res) => handler(req, res, _handler)
 }
 module.exports.updater = (...args) => {
-  const _handler = createBlockstoreHandler(...args)
+  const _handler = updater(...args)
   return (req, res) => handler(req, res, _handler)
 }

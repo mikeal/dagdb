@@ -1,10 +1,10 @@
 const CID = require('cids')
-
+const str = cid => cid.toString('base32')
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
 
-module.exports = (Block, store, depthLimit = 1024) => {
+exports.blockstore = (Block, store) => {
   const handler = async opts => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
@@ -18,9 +18,9 @@ module.exports = (Block, store, depthLimit = 1024) => {
         const [key] = path.split('/')
         let { depth } = params
         if (typeof depth !== 'undefined') {
-          if (depth > depthLimit) throw new Error(`Depth is greater than max limit of ${depthLimit}`)
+          if (depth > store.depthLimit) throw new Error(`Depth is greater than max limit of ${store.depthLimit}`)
         } else {
-          depth = depthLimit
+          depth = store.depthLimit
         }
         const result = await store.graph(new CID(key), depth)
         if (result.missing) result.missing = Array.from(result.missing)
@@ -66,4 +66,23 @@ module.exports = (Block, store, depthLimit = 1024) => {
     }
   }
   return handler
+}
+
+exports.info = (store, updater, ext) => async opts => {
+  const path = opts.path || '/'
+  const info = {
+    root: str(await store.root),
+    blockstore: path + 'blockstore'
+  }
+  if (updater) info.updater = path + 'updater'
+  const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
+  return { headers: jsonHeaders(body), body }
+}
+
+exports.updater = updater => async opts => {
+  if (!opts.params.old) throw new Error(`Missing required param "old"`)
+  if (!opts.params.new) throw new Error(`Missing required param "new"`)
+  const cid = await updater.update(opts.params.old, opts.params.new)
+  const body = Buffer.from(JSON.stringify({root: cid.toString('base32')}))
+  return { headers: jsonHeaders(body), body }
 }

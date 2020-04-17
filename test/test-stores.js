@@ -216,7 +216,7 @@ if (!process.browser) {
     })
   })
   describe('http handler', () => {
-    const createHandler = require('../src/http/blockstore')
+    const createHandler = require('../src/http/handlers').blockstore
     test('head', async () => {
       const store = inmem()
       const handler = createHandler(Block, store)

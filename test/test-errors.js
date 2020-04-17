@@ -101,7 +101,7 @@ if (!process.browser) {
   describe('http', () => {
     const store = inmem()
     test('http storage handler', async () => {
-      const handler = require('../src/http/blockstore')(Block, store)
+      const handler = require('../src/http/handlers').blockstore(Block, store)
       const getError = async (...args) => {
         try {
           await handler(...args)
