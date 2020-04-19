@@ -1,7 +1,8 @@
 /* globals it */
-const inmem = require('../src/store/inmemory')
-const createUpdater = require('../src/updater/kv')
-const { database } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const createUpdater = require('../src/updaters/kv')
+const database = require('../src/database')(Block)
 const createKV = require('./lib/mock-kv')
 const test = it
 const assert = require('assert')
@@ -113,9 +114,48 @@ test('error: empty updater write', async () => {
 
 /*
 if (!process.browser) {
-  test('remote pull', async () => {
-    const { db } = await create()
-    // await db.remote.add('testRemote',)
+  const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
+  const stores = {}
+
+  const createHandler = require('../src/http/nodejs')
+
+  const handler = async (req, res) => {
+    const parsed = new URL('http://asdf' + req.url)
+    const id = parsed.searchParams.get('id')
+    parsed.searchParams.delete('id')
+    const store = stores[id]
+    const updater = updaters[id]
+    if (!store) throw new Error('Missing store')
+    req.url = parsed.toString().slice('http://asdf'.length)
+    const _handler = createHandler(Block, store, updater)
+    return _handler(req, res)
+  }
+
+  describe('http', () => {
+    const port = getPort()
+    const server = require('http').createServer(handler)
+    const closed = new Promise(resolve => server.once('close', resolve))
+    before(() => new Promise((resolve, reject) => {
+      server.listen(port, e => {
+        if (e) return reject(e)
+        resolve()
+      })
+    }))
+    const createDatabase = require('../')(Block)
+    const create = (opts) => {
+      const id = Math.random().toString()
+      const url = `http://localhost:${port}?id=${id}`
+      stores[id] = inmem()
+      updaters[id] = createUpdater(createKV())
+      return createDatabase(url)
+    }
+    test('basics', async () => {
+      await basics(create)
+    })
+    after(() => {
+      server.close()
+      return closed
+    })
   })
 }
 */

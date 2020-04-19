@@ -34,9 +34,9 @@ const createGet = (local, remote) => {
   return get
 }
 
-module.exports = (Block, codec = 'dag-cbor') => {
-  const { encode, decode, register } = valueLoader(Block, codec)
-  const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
+module.exports = (Block) => {
+  const { encode, decode, register } = valueLoader(Block)
+  const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
     const rootBlock = await get(root)
@@ -50,7 +50,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     let last
-    for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block, codec)) {
+    for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block)) {
       last = block
       yield block
     }
@@ -98,7 +98,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
           if (Block.isBlock(_block)) await this.store.put(_block)
           last = _block
         }
-        block = Block.encoder(last, codec)
+        block = Block.encoder(last, 'dag-cbor')
       }
       await this.store.put(block)
       return block
@@ -381,7 +381,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return staged
   }
 
-  const emptyHamt = hamt.empty(Block, codec)
+  const emptyHamt = hamt.empty(Block, 'dag-cbor')
   const emptyData = emptyHamt.cid().then(head => ({ 'kv-v1': { head, ops: [], prev: null } }))
   const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 

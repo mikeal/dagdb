@@ -26,6 +26,10 @@
     "url": "https://github.com/mikeal/dagdb/issues"
   },
   "homepage": "https://github.com/mikeal/dagdb#readme",
+  "browser": {
+    "./index.js": "./src/browser.js",
+    "./src/native/index.js": "./src/native/browser.js"
+  },
   "dependencies": {
     "@ipld/block": "^4.0.0",
     "@ipld/fbl": "0.0.2",

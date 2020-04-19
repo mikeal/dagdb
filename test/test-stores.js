@@ -1,10 +1,10 @@
 /* globals describe, it, before, after */
 const { fixtures, graphTests, replicateTests, basics } = require('./lib/storage')
 const Block = require('@ipld/block')
-const LRUStore = require('../src/store/lru')
+const LRUStore = require('../src/stores/lru')
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const inmem = require('../src/store/inmemory')
+const inmem = require('../src/stores/inmemory')
 const test = it
 
 const b = obj => Block.encoder(obj, 'dag-cbor')
@@ -99,7 +99,7 @@ describe('kv', () => {
 
 describe('s3', () => {
   const createS3 = require('./lib/mock-s3')
-  const createStore = require('../src/store/s3')(Block)
+  const createStore = require('../src/stores/s3')(Block)
   const create = opts => createStore(createS3(), opts)
   test('basics', async () => {
     await basics(create)
@@ -122,7 +122,7 @@ describe('s3', () => {
 
 describe('level', () => {
   const memdown = require('memdown')
-  const createStore = require('../src/store/level')(Block)
+  const createStore = require('../src/stores/level')(Block)
   const create = () => createStore(memdown(Math.random().toString()))
   test('basics', async () => {
     await basics(create)
@@ -162,7 +162,7 @@ if (!process.browser) {
         resolve()
       })
     }))
-    const createStore = require('../src/store/https')(Block)
+    const createStore = require('../src/stores/https')(Block)
     const create = (opts) => {
       const id = Math.random().toString()
       const url = `http://localhost:${port}?id=${id}`
@@ -195,7 +195,7 @@ if (!process.browser) {
         resolve()
       })
     }))
-    const createStore = require('../src/store/https')(Block)
+    const createStore = require('../src/stores/https')(Block)
     const create = (opts) => {
       const url = `http://localhost:${port}`
       return createStore(url, opts)
@@ -235,7 +235,7 @@ if (!process.browser) {
   describe('idb', function () {
     this.timeout(8000)
     const idb = require('level-js')
-    const createStore = require('../src/store/level')(Block)
+    const createStore = require('../src/stores/level')(Block)
     const create = (opts) => createStore(idb(Math.random().toString()), opts)
     test('basics', async () => {
       await basics(create)

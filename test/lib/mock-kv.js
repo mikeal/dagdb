@@ -1,5 +1,5 @@
 const Block = require('@ipld/block')
-const KVStore = require('../../src/store/kv')(Block)
+const KVStore = require('../../src/stores/kv')(Block)
 const { encode, decode } = require('charwise')
 
 class NotFound extends Error {

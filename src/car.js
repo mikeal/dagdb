@@ -1,6 +1,6 @@
 const { stat, rename } = require('fs').promises
 const carfile = require('datastore-car')
-const inmem = require('./store/inmemory')
+const inmem = require('./stores/inmemory')
 const Block = require('@ipld/block')
 const database = require('./database')(Block)
 const path = require('path')

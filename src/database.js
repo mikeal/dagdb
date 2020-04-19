@@ -1,8 +1,8 @@
 const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
-const createStore = require('./store')
+const createStore = require('./stores')
 const hamt = require('./hamt')
-const replicate = require('./store/replicate')
+const replicate = require('./stores/replicate')
 const CID = require('cids')
 const bent = require('bent')
 const getJSON = bent('json')
@@ -20,9 +20,9 @@ const databaseEncoder = async function * (db) {
   yield db.root
 }
 
-module.exports = (Block, codec = 'dag-cbor') => {
-  const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
-  const kv = createKV(Block, codec)
+module.exports = (Block) => {
+  const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
+  const kv = createKV(Block)
   const store = createStore(Block)
 
   class Remote {
@@ -178,7 +178,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       let last
       const head = await this.db._kv.then(kv => kv.getHead())
       const get = this.db.store.get.bind(this.db.store)
-      for await (const block of hamt.bulk(head, ops, get, Block, codec)) {
+      for await (const block of hamt.bulk(head, ops, get, Block)) {
         last = block
         promises.push(this.db.store.put(block))
       }

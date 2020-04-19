@@ -2,8 +2,8 @@ const { readonly, isCID, validate } = require('./utils')
 const createFBL = require('@ipld/fbl/bare')
 const types = {}
 
-module.exports = (Block, codec) => {
-  const fbl = createFBL(Block, codec)
+module.exports = (Block) => {
+  const fbl = createFBL(Block, 'dag-cbor')
 
   const fblDecoder = (root, store) => {
     const get = store.get.bind(store)

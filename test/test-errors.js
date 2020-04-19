@@ -1,10 +1,10 @@
 /* globals it, describe, before, after */
-const inmem = require('../src/store/inmemory')
-const { kv } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const kv = require('../src/kv')(Block)
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const Block = require('@ipld/block')
 const bent = require('bent')
 
 const create = async (_kv = kv) => {

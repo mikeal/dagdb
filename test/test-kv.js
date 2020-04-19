@@ -1,11 +1,11 @@
 /* globals it */
-const inmem = require('../src/store/inmemory')
-const { kv } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const kv = require('../src/kv')(Block)
 const bare = require('../bare')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const Block = require('@ipld/block')
 const { isCID } = require('../src/utils')
 
 const create = async (_kv = kv) => {
@@ -64,18 +64,6 @@ test('basic removal', async () => {
   same(await kvs.has('test'), false)
   kvs = await kvs.commit()
   same(await kvs.has('test'), false)
-})
-
-test('custom codec', async () => {
-  const { kv } = bare(Block, 'dag-json')
-  await basics(kv)
-  let store = await kv.create(inmem())
-  await store.set('test', { x: 1 })
-  store = await store.commit()
-  same(await store.get('test'), { x: 1 })
-  same(store.root.codec, 'dag-json')
-  store = kv(store.root, store.store)
-  same(await store.get('test'), { x: 1 })
 })
 
 test('iter over all in db', async () => {

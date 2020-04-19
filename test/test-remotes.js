@@ -1,7 +1,8 @@
 /* globals it, describe */
-const inmem = require('../src/store/inmemory')
-const createUpdater = require('../src/updater/kv')
-const { database } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const createUpdater = require('../src/updaters/kv')
+const database = require('../src/database')(Block)
 const createKV = require('./lib/mock-kv')
 const test = it
 const assert = require('assert')

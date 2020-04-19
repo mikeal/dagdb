@@ -80,9 +80,9 @@ exports.info = (store, updater, ext) => async opts => {
 }
 
 exports.updater = updater => async opts => {
-  if (!opts.params.old) throw new Error(`Missing required param "old"`)
-  if (!opts.params.new) throw new Error(`Missing required param "new"`)
+  if (!opts.params.old) throw new Error('Missing required param "old"')
+  if (!opts.params.new) throw new Error('Missing required param "new"')
   const cid = await updater.update(opts.params.old, opts.params.new)
-  const body = Buffer.from(JSON.stringify({root: cid.toString('base32')}))
+  const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
   return { headers: jsonHeaders(body), body }
 }
