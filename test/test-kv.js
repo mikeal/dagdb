@@ -2,7 +2,6 @@
 const Block = require('@ipld/block')
 const inmem = require('../src/stores/inmemory')
 const kv = require('../src/kv')(Block)
-const bare = require('../bare')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual

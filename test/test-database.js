@@ -1,4 +1,4 @@
-/* globals it */
+/* globals it, describe, before, after */
 const Block = require('@ipld/block')
 const inmem = require('../src/stores/inmemory')
 const createUpdater = require('../src/updaters/kv')
@@ -112,10 +112,10 @@ test('error: empty updater write', async () => {
   assert.ok(threw)
 })
 
-/*
 if (!process.browser) {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
   const stores = {}
+  const updaters = {}
 
   const createHandler = require('../src/http/nodejs')
 
@@ -141,7 +141,7 @@ if (!process.browser) {
         resolve()
       })
     }))
-    const createDatabase = require('../')(Block)
+    const createDatabase = require('../')
     const create = (opts) => {
       const id = Math.random().toString()
       const url = `http://localhost:${port}?id=${id}`
@@ -158,4 +158,3 @@ if (!process.browser) {
     })
   })
 }
-*/
