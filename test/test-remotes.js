@@ -51,14 +51,7 @@ test('full merge', async () => {
   ok(kv1.equals(kv2))
   remote = await latest.remotes.get('test')
   await remote.pullDatabase(db2)
-  let threw = true
-  try {
-    latest = await latest.update()
-    threw = false
-  } catch (e) {
-    if (e.message !== 'No changes to update') throw e
-  }
-  ok(threw)
+  latest = await latest.update()
   same(await latest.get('test'), { hello: 'world' })
 
   await db2.set('test', { foo: 'bar' })
@@ -82,14 +75,6 @@ test('keyed merge', async () => {
   same(await latestDB.get('test'), { hello: 'world' })
   remote = await db1.remotes.get('test')
   await remote.pullDatabase(db2)
-  let threw = true
-  try {
-    await db1.update()
-    threw = false
-  } catch (e) {
-    if (e.message !== 'No changes to update') throw e
-  }
-  ok(threw)
 
   let dbValue = await db1.get('test-db')
   same(await dbValue.get('test'), { hello: 'world' })

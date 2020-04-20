@@ -47,7 +47,7 @@ class KVUpdater {
       if (prevRoot) throw new Error('There is no previous root')
     } else {
       const prev = new CID(await this.store._getKey(['root']))
-      if (!prev.equals(prevRoot)) {
+      if (!prevRoot || !prev.equals(prevRoot)) {
         this.lock.unlock()
         return prev
       }

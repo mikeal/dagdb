@@ -70,7 +70,7 @@ exports.blockstore = (Block, store) => {
 exports.info = (store, updater, ext) => async opts => {
   const root = await updater.root
   const info = {
-    root,
+    root: root ? root.toString('base32') : root,
     blockstore: 'blockstore'
   }
   if (updater) info.updater = 'updater'
@@ -80,6 +80,8 @@ exports.info = (store, updater, ext) => async opts => {
 
 exports.updater = updater => async opts => {
   if (!opts.params.new) throw new Error('Missing required param "new"')
+  opts.params.new = new CID(opts.params.new)
+  if (opts.params.old) opts.params.old = new CID(opts.params.old)
   const cid = await updater.update(opts.params.new, opts.params.old)
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
   return { headers: jsonHeaders(body), body }

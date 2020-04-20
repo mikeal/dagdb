@@ -54,7 +54,7 @@ module.exports = (Block) => {
         }
       }
       this.store = await store.from(resp.blockstore)
-      const database = new Database(root, this.store)
+      const database = new Database(root, this.store, this.updater)
       return this.pullDatabase(database, info.strategy)
     }
 
@@ -223,7 +223,7 @@ module.exports = (Block) => {
       root['db-v1'].indexes = await this.indexes.update(kv.root)
       const block = toBlock(root, 'Database')
       await this.store.put(block)
-      return new Database(await block.cid(), this.store)
+      return new Database(await block.cid(), this.store, this.updater)
     }
 
     async getHead () {
@@ -275,10 +275,11 @@ module.exports = (Block) => {
 
     async update (...args) {
       let latest = await this.commit()
+      let prevRoot = this.root
       if (latest.root.equals(this.root)) {
-        throw new Error('No changes to update')
+        prevRoot = null
       }
-      let current = await this.updater.update(latest.root, this.root)
+      let current = await this.updater.update(latest.root, prevRoot)
       while (!latest.root.equals(current)) {
         await this.merge(new Database(current, this.store, this.updater))
         latest = await this.commit()

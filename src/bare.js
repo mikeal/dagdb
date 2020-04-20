@@ -20,7 +20,7 @@ module.exports = (Block, ...args) => {
   }
   const open = async (id, ...args) => {
     if (isHttp(id)) {
-      const { info, store, updater } = getInfo(id, ...args)
+      const { info, store, updater } = await getInfo(id, ...args)
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
     }
