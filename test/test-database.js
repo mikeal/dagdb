@@ -16,8 +16,8 @@ const create = async () => {
   return { store, db, updater }
 }
 
-const basics = async () => {
-  const { db } = await create()
+const basics = async (_create = create) => {
+  const { db } = await _create()
   await db.set('test', { hello: 'world' })
   let obj = await db.get('test')
   same(obj, { hello: 'world' })
@@ -120,15 +120,12 @@ if (!process.browser) {
   const createHandler = require('../src/http/nodejs')
 
   const handler = async (req, res) => {
-    const parsed = new URL('http://asdf' + req.url)
-    const id = parsed.searchParams.get('id')
-    parsed.searchParams.delete('id')
+    const [id] = req.url.split('/').filter(x => x)
     const store = stores[id]
     const updater = updaters[id]
     if (!store) throw new Error('Missing store')
-    req.url = parsed.toString().slice('http://asdf'.length)
     const _handler = createHandler(Block, store, updater)
-    return _handler(req, res)
+    return _handler(req, res, '/' + id)
   }
 
   describe('http', () => {
@@ -142,12 +139,12 @@ if (!process.browser) {
       })
     }))
     const createDatabase = require('../')
-    const create = (opts) => {
+    const create = async (opts) => {
       const id = Math.random().toString()
-      const url = `http://localhost:${port}?id=${id}`
+      const url = `http://localhost:${port}/${id}`
       stores[id] = inmem()
       updaters[id] = createUpdater(createKV())
-      return createDatabase(url)
+      return { db: await createDatabase.create(url) }
     }
     test('basics', async () => {
       await basics(create)

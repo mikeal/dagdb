@@ -12,6 +12,17 @@ const lock = (self) => {
   return { p, unlock }
 }
 
+const getRoot = async updater => {
+  let buff
+  try {
+    buff = await updater.store._getKey(['root'])
+  } catch (e) {
+    if (e.message.toLowerCase().includes('not found')) return null
+    throw e
+  }
+  return new CID(buff)
+}
+
 class KVUpdater {
   constructor (store) {
     this.store = store
@@ -19,7 +30,7 @@ class KVUpdater {
   }
 
   get root () {
-    return this.store._getKey(['root']).then(buff => new CID(buff))
+    return getRoot(this)
   }
 
   async update (newRoot, prevRoot) {

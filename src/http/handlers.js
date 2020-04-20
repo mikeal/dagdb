@@ -1,5 +1,4 @@
 const CID = require('cids')
-const str = cid => cid.toString('base32')
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
@@ -9,7 +8,7 @@ exports.blockstore = (Block, store) => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
     if (!path) throw new Error('Missing required param "path"')
-    if (path[0] === '/') path = path.slice(1)
+    while (path[0] === '/') path = path.slice(1)
     if (method === 'PUT' && !body) {
       throw new Error('Missing required param "body"')
     }
@@ -69,20 +68,19 @@ exports.blockstore = (Block, store) => {
 }
 
 exports.info = (store, updater, ext) => async opts => {
-  const path = opts.path || '/'
+  const root = await updater.root
   const info = {
-    root: str(await store.root),
-    blockstore: path + 'blockstore'
+    root,
+    blockstore: 'blockstore'
   }
-  if (updater) info.updater = path + 'updater'
+  if (updater) info.updater = 'updater'
   const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
   return { headers: jsonHeaders(body), body }
 }
 
 exports.updater = updater => async opts => {
-  if (!opts.params.old) throw new Error('Missing required param "old"')
   if (!opts.params.new) throw new Error('Missing required param "new"')
-  const cid = await updater.update(opts.params.old, opts.params.new)
+  const cid = await updater.update(opts.params.new, opts.params.old)
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
   return { headers: jsonHeaders(body), body }
 }
