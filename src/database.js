@@ -42,6 +42,37 @@ module.exports = (Block) => {
       this.kv = db._kv
     }
 
+    async setStorage (info, resp) {
+      let url = new URL(resp.blockstore, info.source)
+      this.store = await stores.from(url.toString())
+      if (resp.updater) {
+        url = new URL(resp.updater, info.source)
+        this.updater = updaters.from(url.toString())
+      }
+    }
+
+    async push () {
+      const info = await this.info
+      if (info.source === 'local') {
+        throw new Error('Local remotes cannot push')
+      }
+      if (!info.strategy.full) {
+        throw new Error('Can only push databases using full merge strategy')
+      }
+      const resp = await getJSON(info.source)
+      const root = new CID(resp.root)
+      if (!root.equals(this.rootDecode.head)) {
+        throw new Error('Remote has updated since last pull, re-pull before pushing')
+      }
+      if (!resp.updater) throw new Error('Remote must have updater to use push')
+      await this.setStorage(info, resp)
+      await replicate(this.db.root, this.db.store, this.store)
+      const cid = await this.updater.update(this.db.root, root)
+      if (!cid.equals(this.db.root)) {
+        throw new Error('Remote has updated since last pull, re-pull before pushing')
+      }
+    }
+
     async pull () {
       const info = await this.info
       if (info.source === 'local') {
@@ -55,12 +86,7 @@ module.exports = (Block) => {
           return root // no changes since last merge
         }
       }
-      let url = new URL(resp.blockstore, info.source)
-      this.store = await stores.from(url.toString())
-      if (resp.updater) {
-        url = new URL(resp.updater, info.source)
-        this.updater = updaters.from(url.toString())
-      }
+      await this.setStorage(info, resp)
       const database = new Database(root, this.store, this.updater)
       return this.pullDatabase(database, info.strategy)
     }
