@@ -1,4 +1,4 @@
-/* globals it, describe */
+/* globals it */
 const Block = require('@ipld/block')
 const inmem = require('../src/stores/inmemory')
 const createUpdater = require('../src/updaters/kv')
@@ -88,5 +88,44 @@ test('keyed merge', async () => {
   same(await dbValue.get('test'), { foo: 'bar' })
 })
 
-describe('http', () => {
-})
+if (!process.browser) {
+  const stores = {}
+  const updaters = {}
+
+  const httpTests = require('./lib/http.js')
+  const createHandler = require('../src/http/nodejs')
+
+  const handler = async (req, res) => {
+    const [id] = req.url.split('/').filter(x => x)
+    const store = stores[id]
+    const updater = updaters[id]
+    if (!store) throw new Error('Missing store')
+    const _handler = createHandler(Block, store, updater)
+    return _handler(req, res, '/' + id)
+  }
+  httpTests(handler, port => {
+    const createDatabase = require('../')
+    const create = async (opts) => {
+      const id = Math.random().toString()
+      const url = `http://localhost:${port}/${id}`
+      stores[id] = inmem()
+      updaters[id] = createUpdater(createKV())
+      return createDatabase.create(url)
+    }
+    test('basic full merge', async () => {
+      let db1 = await create()
+      let db2 = await create()
+      await db2.set('test', { hello: 'world' })
+      db2 = await db2.update()
+      const info = { source: db2.updater.infoUrl, strategy: { full: true } }
+      await db1.remotes.add('a', info)
+      db1 = await db1.update()
+      db1 = await createDatabase.open(db1.updater.infoUrl)
+      same(await db1.get('test'), { hello: 'world' })
+      await db2.set('test2', { foo: 'bar' })
+      db2 = await db2.update()
+      await db1.remotes.pull('a')
+      same(await db1.get('test2'), { foo: 'bar' })
+    })
+  })
+}

@@ -1,6 +1,7 @@
 const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
-const createStore = require('./stores')
+const createStores = require('./stores')
+const createUpdaters = require('./updaters')
 const hamt = require('./hamt')
 const replicate = require('./stores/replicate')
 const CID = require('cids')
@@ -23,7 +24,8 @@ const databaseEncoder = async function * (db) {
 module.exports = (Block) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const kv = createKV(Block)
-  const store = createStore(Block)
+  const stores = createStores(Block)
+  const updaters = createUpdaters(Block)
 
   class Remote {
     constructor (obj, db) {
@@ -53,7 +55,12 @@ module.exports = (Block) => {
           return root // no changes since last merge
         }
       }
-      this.store = await store.from(resp.blockstore)
+      let url = new URL(resp.blockstore, info.source)
+      this.store = await stores.from(url.toString())
+      if (resp.updater) {
+        url = new URL(resp.updater, info.source)
+        this.updater = updaters.from(url.toString())
+      }
       const database = new Database(root, this.store, this.updater)
       return this.pullDatabase(database, info.strategy)
     }
@@ -159,7 +166,7 @@ module.exports = (Block) => {
 
     async pull (name, remote) {
       if (!remote) {
-        remote = await this.remotes.get(name)
+        remote = await this.get(name)
       }
       await remote.pull()
       this.pending.set(name, remote)
