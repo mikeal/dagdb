@@ -135,6 +135,18 @@ describe('level', () => {
   })
 })
 
+describe('errors', () => {
+  test('unsupported scheme', async () => {
+    const main = require('../src/stores')(Block)
+    try {
+      await main.from('wss://')
+      throw new Error('Did not throw')
+    } catch (e) {
+      if (e.message !== 'Cannot resolve identifier "wss://"') throw e
+    }
+  })
+})
+
 if (!process.browser) {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
   const stores = {}

@@ -73,7 +73,7 @@ exports.info = (store, updater, ext) => async opts => {
     root: root ? root.toString('base32') : root,
     blockstore: 'blockstore'
   }
-  if (updater) info.updater = 'updater'
+  if (updater.update) info.updater = 'updater'
   const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
   return { headers: jsonHeaders(body), body }
 }

@@ -82,6 +82,18 @@ test('concurrent updates', async () => {
   assert.ok(equals)
 })
 
+test('dirty database as value', async () => {
+  const db = await basics()
+  const val = await basics()
+  await val.set('foo', 'bar')
+  try {
+    await db.set('val', val)
+    throw new Error('Did not throw')
+  } catch (e) {
+    if (e.message !== 'Cannot use database with pending transactions as a value') throw e
+  }
+})
+
 // errors
 
 /*

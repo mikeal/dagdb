@@ -47,7 +47,7 @@ module.exports = (Block) => {
       this.store = await stores.from(url.toString())
       if (resp.updater) {
         url = new URL(resp.updater, info.source)
-        this.updater = updaters.from(url.toString())
+        this.updater = await updaters.from(info.source, url.toString())
       }
     }
 
@@ -60,12 +60,16 @@ module.exports = (Block) => {
         throw new Error('Can only push databases using full merge strategy')
       }
       const resp = await getJSON(info.source)
+      if (!resp.updater) throw new Error('Remote must have updater to use push')
       const root = new CID(resp.root)
-      if (!root.equals(this.rootDecode.head)) {
+
+      await this.setStorage(info, resp)
+
+      const db = new Database(root, this.store, this.updater)
+      const head = await db.getHead()
+      if (!head.equals(this.rootDecode.head)) {
         throw new Error('Remote has updated since last pull, re-pull before pushing')
       }
-      if (!resp.updater) throw new Error('Remote must have updater to use push')
-      await this.setStorage(info, resp)
       await replicate(this.db.root, this.db.store, this.store)
       const cid = await this.updater.update(this.db.root, root)
       if (!cid.equals(this.db.root)) {
@@ -185,6 +189,7 @@ module.exports = (Block) => {
     async get (name) {
       const root = await this._root
       const cid = await hamt.get(root, name, this._get)
+      if (!cid) throw new Error(`No remote named "${name}"`)
       const block = await this.db.store.get(cid)
       const decoded = fromBlock(block, 'Remote')
       return new Remote(decoded, this.db)

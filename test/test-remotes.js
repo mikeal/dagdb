@@ -1,5 +1,6 @@
 /* globals it */
 const Block = require('@ipld/block')
+const bent = require('bent')
 const inmem = require('../src/stores/inmemory')
 const createUpdater = require('../src/updaters/kv')
 const database = require('../src/database')(Block)
@@ -88,12 +89,78 @@ test('keyed merge', async () => {
   same(await dbValue.get('test'), { foo: 'bar' })
 })
 
+test('unsupported scheme', async () => {
+  const main = require('../src/updaters')(Block)
+  try {
+    await main.from('ws://')
+    throw new Error('Did not throw')
+  } catch (e) {
+    if (e.message !== 'Unsupported identifier "ws://"') throw e
+  }
+})
+
 if (!process.browser) {
   const stores = {}
   const updaters = {}
 
   const httpTests = require('./lib/http.js')
   const createHandler = require('../src/http/nodejs')
+
+  test('handler info, readonly', async () => {
+    const handler = require('../src/http/handlers').info({}, { root: 'test' })
+    const resp = await handler({})
+    const info = JSON.parse(resp.body.toString())
+    same(info.root, 'test')
+    assert.ok(!info.updater)
+    same(info.blockstore, 'blockstore')
+  })
+  test('missing required param', async () => {
+    const handler = require('../src/http/handlers').updater()
+    try {
+      await handler({ params: {} })
+      throw new Error('Did not throw')
+    } catch (e) {
+      if (e.message !== 'Missing required param "new"') throw e
+    }
+  })
+  test('update handler', async () => {
+    const b = Buffer.from('test')
+    const block = Block.encoder(b, 'raw')
+    const cid = await block.cid()
+    const updater = { update: () => cid }
+    const handler = createHandler.updater(updater)
+    let head
+    let body
+    const mock = {
+      writeHead: (...args) => { head = args },
+      end: (...args) => { body = args }
+    }
+    await handler({ method: 'GET', url: `/?new=${cid.toString('base32')}` }, mock)
+    body = JSON.parse(body.toString())
+    const [status, headers] = head
+    same(headers['content-type'], 'application/json')
+    same(status, 200)
+    same(body, { root: cid.toString('base32') })
+  })
+  test('handler no base path', async () => {
+    const b = Block.encoder(Buffer.from('test'), 'raw')
+    const cid = await b.cid()
+    const store = {}
+    const updater = { root: await b.cid() }
+    const handler = createHandler(Block, store, updater)
+    let head
+    let body
+    const mock = {
+      writeHead: (...args) => { head = args },
+      end: (...args) => { body = args }
+    }
+    await handler({ method: 'GET', url: '/' }, mock)
+    body = JSON.parse(body.toString())
+    const [status, headers] = head
+    same(headers['content-type'], 'application/json')
+    same(status, 200)
+    same(body, { root: cid.toString('base32'), blockstore: 'blockstore' })
+  })
 
   const handler = async (req, res) => {
     const [id] = req.url.split('/').filter(x => x)
@@ -126,6 +193,28 @@ if (!process.browser) {
       db2 = await db2.update()
       await db1.remotes.pull('a')
       same(await db1.get('test2'), { foo: 'bar' })
+    })
+    test('updater', async () => {
+      let db = await create()
+      await db.set('test', { hello: 'world' })
+      db = await db.update()
+      assert.ok(db.root.equals(await db.updater.root))
+    })
+    test('not found', async () => {
+      const db = await create()
+      const url = db.updater.infoUrl + 'notfound'
+      const get = bent(404, 'string')
+      const resp = await get(url)
+      same(resp, 'Not found')
+    })
+    test('push', async () => {
+      let db = await create()
+      const info = { source: db.updater.infoUrl, strategy: { full: true } }
+      delete db.updater
+      await db.remotes.add('origin', info)
+      db = await db.commit()
+      const remote = await db.remotes.get('origin')
+      await remote.push()
     })
   })
 }

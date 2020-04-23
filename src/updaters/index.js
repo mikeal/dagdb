@@ -28,10 +28,10 @@ class HttpUpdater {
 
 module.exports = Block => {
   const from = async (id, ...args) => {
-    if (id.startsWith('http://') || id.startsWith('https://')) {
+    if (id.startsWith('http://') || /* istanbul ignore next */ id.startsWith('https://')) {
       return new HttpUpdater(id, ...args)
     }
-    throw new Error('not implemented')
+    throw new Error(`Unsupported identifier "${id}"`)
   }
   return { from, kv: require('./kv')(Block) }
 }

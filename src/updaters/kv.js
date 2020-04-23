@@ -17,8 +17,9 @@ const getRoot = async updater => {
   try {
     buff = await updater.store._getKey(['root'])
   } catch (e) {
+    // istanbul ignore else
     if (e.message.toLowerCase().includes('not found')) return null
-    throw e
+    else throw e
   }
   return new CID(buff)
 }
