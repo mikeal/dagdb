@@ -1,7 +1,8 @@
-/* globals it */
-const inmem = require('../src/store/inmemory')
-const createUpdater = require('../src/updater/kv')
-const { database } = require('../')
+/* globals it, describe, before, after */
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const createUpdater = require('../src/updaters/kv')
+const database = require('../src/database')(Block)
 const createKV = require('./lib/mock-kv')
 const test = it
 const assert = require('assert')
@@ -15,8 +16,8 @@ const create = async () => {
   return { store, db, updater }
 }
 
-const basics = async () => {
-  const { db } = await create()
+const basics = async (_create = create) => {
+  const { db } = await _create()
   await db.set('test', { hello: 'world' })
   let obj = await db.get('test')
   same(obj, { hello: 'world' })
@@ -81,8 +82,21 @@ test('concurrent updates', async () => {
   assert.ok(equals)
 })
 
+test('dirty database as value', async () => {
+  const db = await basics()
+  const val = await basics()
+  await val.set('foo', 'bar')
+  try {
+    await db.set('val', val)
+    throw new Error('Did not throw')
+  } catch (e) {
+    if (e.message !== 'Cannot use database with pending transactions as a value') throw e
+  }
+})
+
 // errors
 
+/*
 test('error: update no changes', async () => {
   const { db } = await create()
   let threw = true
@@ -94,6 +108,7 @@ test('error: update no changes', async () => {
   }
   assert.ok(threw)
 })
+*/
 
 test('error: empty updater write', async () => {
   const store = inmem()
@@ -110,3 +125,53 @@ test('error: empty updater write', async () => {
   }
   assert.ok(threw)
 })
+
+if (!process.browser) {
+  const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
+  const stores = {}
+  const updaters = {}
+
+  const createHandler = require('../src/http/nodejs')
+
+  const handler = async (req, res) => {
+    const [id] = req.url.split('/').filter(x => x)
+    const store = stores[id]
+    const updater = updaters[id]
+    if (!store) throw new Error('Missing store')
+    const _handler = createHandler(Block, store, updater)
+    return _handler(req, res, '/' + id)
+  }
+
+  describe('http', () => {
+    const port = getPort()
+    const server = require('http').createServer(handler)
+    const closed = new Promise(resolve => server.once('close', resolve))
+    before(() => new Promise((resolve, reject) => {
+      server.listen(port, e => {
+        if (e) return reject(e)
+        resolve()
+      })
+    }))
+    const createDatabase = require('../')
+    const create = async (opts) => {
+      const id = Math.random().toString()
+      const url = `http://localhost:${port}/${id}`
+      stores[id] = inmem()
+      updaters[id] = createUpdater(createKV())
+      return { db: await createDatabase.create(url) }
+    }
+    test('basics', async () => {
+      await basics(create)
+    })
+    test('open', async () => {
+      let db = await basics(create)
+      db = await db.update()
+      const db2 = await createDatabase.open(db.updater.infoUrl)
+      assert.ok(db.root.equals(db2.root))
+    })
+    after(() => {
+      server.close()
+      return closed
+    })
+  })
+}

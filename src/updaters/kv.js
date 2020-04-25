@@ -12,10 +12,26 @@ const lock = (self) => {
   return { p, unlock }
 }
 
+const getRoot = async updater => {
+  let buff
+  try {
+    buff = await updater.store._getKey(['root'])
+  } catch (e) {
+    // istanbul ignore else
+    if (e.message.toLowerCase().includes('not found')) return null
+    else throw e
+  }
+  return new CID(buff)
+}
+
 class KVUpdater {
   constructor (store) {
     this.store = store
     this.lock = null
+  }
+
+  get root () {
+    return getRoot(this)
   }
 
   async update (newRoot, prevRoot) {
@@ -32,7 +48,7 @@ class KVUpdater {
       if (prevRoot) throw new Error('There is no previous root')
     } else {
       const prev = new CID(await this.store._getKey(['root']))
-      if (!prev.equals(prevRoot)) {
+      if (!prevRoot || !prev.equals(prevRoot)) {
         this.lock.unlock()
         return prev
       }

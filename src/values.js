@@ -2,8 +2,8 @@ const { readonly, isCID, validate } = require('./utils')
 const createFBL = require('@ipld/fbl/bare')
 const types = {}
 
-module.exports = (Block, codec) => {
-  const fbl = createFBL(Block, codec)
+module.exports = (Block) => {
+  const fbl = createFBL(Block, 'dag-cbor')
 
   const fblDecoder = (root, store) => {
     const get = store.get.bind(store)
@@ -35,7 +35,7 @@ module.exports = (Block, codec) => {
     const encoder = _typeEncoder(gen, last => { encoder.last = last })
     return encoder
   }
-  const decode = (value, store) => {
+  const decode = (value, store, updater) => {
     // decode only accepts IPLD Data Model
     // this method is expected to accept decoded Block data directly
     // and it can't work with any special types.
@@ -53,14 +53,14 @@ module.exports = (Block, codec) => {
       if (value._dagdb) {
         validate(value, 'DagDB')
         const type = Object.keys(value._dagdb.v1)[0]
-        return types[type](value._dagdb.v1[type], store)
+        return types[type](value._dagdb.v1[type], store, updater)
       } else if (Array.isArray(value)) {
         for (let i = 0; i < value.length; i++) {
-          value[i] = decode(value[i], store)
+          value[i] = decode(value[i], store, updater)
         }
       } else {
         for (const [key, _value] of Object.entries(value)) {
-          value[key] = decode(_value, store)
+          value[key] = decode(_value, store, updater)
         }
       }
     }

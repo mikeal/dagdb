@@ -157,19 +157,97 @@
         }
       }
     },
-    "SecondaryKeyValueIndex": {
+    "Paths": {
+      "kind": "list",
+      "valueType": "String"
+    },
+    "Reduces": {
+      "kind": "list",
+      "valueType": "String"
+    },
+    "MapFunction": {
+      "kind": "string"
+    },
+    "UnorderedKeyedIndexTransform": {
+      "kind": "union",
+      "representation": {
+        "kinded": {
+          "list": "Paths",
+          "string": "MapFunction"
+        }
+      }
+    },
+    "UnorderedKeyedIndexValue": {
       "kind": "struct",
       "fields": {
-        "path": {
-          "type": "String"
-        },
-        "head": {
+        "values": {
           "type": {
             "kind": "link",
-            "expectedType": "Transaction"
+            "expectedType": "HashMapRoot"
           }
         },
-        "index": {
+        "reduced": {
+          "type": "map",
+          "optional": true
+        }
+      },
+      "representation": {
+        "tuple": {}
+      }
+    },
+    "UnorderedIndexOperation": {
+      "kind": "struct",
+      "fields": {
+        "op": {
+          "type": {
+            "kind": "link",
+            "expectedType": "SetOperation"
+          }
+        },
+        "transform": {
+          "type": {
+            "kind": "link",
+            "expectedType": "UnorderedKeyedIndexTransform"
+          }
+        },
+        "value": {
+          "type": "Link"
+        },
+        "reduces": {
+          "type": "Reduces",
+          "optional": true
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "IndexUnion": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "uki": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
+        }
+      }
+    },
+    "IndexInfoUnion": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "uki": {
+            "kind": "link",
+            "expectedType": "UnorderedKeyedIndexInfo"
+          }
+        }
+      }
+    },
+    "Index": {
+      "kind": "struct",
+      "fields": {
+        "head": {
           "type": {
             "kind": "link",
             "expectedType": "HashMapRoot"
@@ -180,6 +258,12 @@
             "kind": "link",
             "expectedType": "HashMapRoot"
           }
+        },
+        "index": {
+          "type": "IndexUnion"
+        },
+        "info": {
+          "type": "IndexInfoUnion"
         }
       },
       "representation": {
@@ -228,6 +312,61 @@
             }
           }
         }
+      }
+    },
+    "FullMerge": {
+      "kind": "bool"
+    },
+    "KeyedMerge": {
+      "kind": "string"
+    },
+    "RemoteMergeStrategy": {
+      "kind": "union",
+      "representation": {
+        "keyed": {
+          "full": "FullMerge",
+          "keyed": "KeyedMerge"
+        }
+      }
+    },
+    "RemoteInfo": {
+      "kind": "struct",
+      "fields": {
+        "strategy": {
+          "type": "RemoteMergeStrategy"
+        },
+        "source": {
+          "type": "String"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Remote": {
+      "kind": "struct",
+      "fields": {
+        "info": {
+          "type": {
+            "kind": "link",
+            "expectedType": "RemoteInfo"
+          }
+        },
+        "head": {
+          "type": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
+        },
+        "merged": {
+          "type": {
+            "kind": "link",
+            "expectedType": "HashMapRoot"
+          }
+        }
+      },
+      "representation": {
+        "map": {}
       }
     },
     "DatabaseV1": {

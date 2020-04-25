@@ -11,6 +11,7 @@ class InMemory {
     this.storage = new Map()
     this.links = { to: new Map(), from: new Map() }
     this.complete = new Set()
+    this.depthLimit = 1024
   }
 
   async graph (cid, depth = 1024, missing = new Set(), incomplete = new Set(), skips = new Set()) {

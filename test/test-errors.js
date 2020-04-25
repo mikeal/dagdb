@@ -1,10 +1,10 @@
 /* globals it, describe, before, after */
-const inmem = require('../src/store/inmemory')
-const { kv } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const kv = require('../src/kv')(Block)
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const Block = require('@ipld/block')
 const bent = require('bent')
 
 const create = async (_kv = kv) => {
@@ -101,7 +101,7 @@ if (!process.browser) {
   describe('http', () => {
     const store = inmem()
     test('http storage handler', async () => {
-      const handler = require('../src/http/store/handler')(Block, store)
+      const handler = require('../src/http/handlers').blockstore(Block, store)
       const getError = async (...args) => {
         try {
           await handler(...args)
@@ -139,7 +139,7 @@ if (!process.browser) {
     })
     const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
     const port = getPort()
-    const handler = require('../src/http/store/nodejs')(Block, store)
+    const handler = require('../src/http/nodejs').blockstore(Block, store)
     const server = require('http').createServer(handler)
     const closed = new Promise(resolve => server.once('close', resolve))
 

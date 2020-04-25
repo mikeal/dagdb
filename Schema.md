@@ -153,7 +153,7 @@ type RemoteMergeStrategy union {
 
 type RemoteInfo struct {
   strategy RemoteMergeStrategy
-  url String
+  source String
 }
 
 type Remote struct {

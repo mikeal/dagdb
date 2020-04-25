@@ -1,15 +1,14 @@
 const CID = require('cids')
-
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
 
-module.exports = (Block, store, depthLimit = 1024) => {
+exports.blockstore = (Block, store) => {
   const handler = async opts => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
     if (!path) throw new Error('Missing required param "path"')
-    if (path[0] === '/') path = path.slice(1)
+    while (path[0] === '/') path = path.slice(1)
     if (method === 'PUT' && !body) {
       throw new Error('Missing required param "body"')
     }
@@ -18,9 +17,9 @@ module.exports = (Block, store, depthLimit = 1024) => {
         const [key] = path.split('/')
         let { depth } = params
         if (typeof depth !== 'undefined') {
-          if (depth > depthLimit) throw new Error(`Depth is greater than max limit of ${depthLimit}`)
+          if (depth > store.depthLimit) throw new Error(`Depth is greater than max limit of ${store.depthLimit}`)
         } else {
-          depth = depthLimit
+          depth = store.depthLimit
         }
         const result = await store.graph(new CID(key), depth)
         if (result.missing) result.missing = Array.from(result.missing)
@@ -66,4 +65,24 @@ module.exports = (Block, store, depthLimit = 1024) => {
     }
   }
   return handler
+}
+
+exports.info = (store, updater, ext) => async opts => {
+  const root = await updater.root
+  const info = {
+    root: root ? root.toString('base32') : root,
+    blockstore: 'blockstore'
+  }
+  if (updater.update) info.updater = 'updater'
+  const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
+  return { headers: jsonHeaders(body), body }
+}
+
+exports.updater = updater => async opts => {
+  if (!opts.params.new) throw new Error('Missing required param "new"')
+  opts.params.new = new CID(opts.params.new)
+  if (opts.params.old) opts.params.old = new CID(opts.params.old)
+  const cid = await updater.update(opts.params.new, opts.params.old)
+  const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
+  return { headers: jsonHeaders(body), body }
 }

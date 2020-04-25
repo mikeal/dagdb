@@ -1,6 +1,7 @@
 /* globals it */
-const inmem = require('../src/store/inmemory')
-const { kv } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const kv = require('../src/kv')(Block)
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
@@ -91,10 +92,10 @@ test('remote wins conflict', async () => {
   } catch (e) {
     if (!e.message.startsWith('Conflict')) throw e
   }
-  await two.pull(one, remoteWins)
+  await two.pull(one, [], remoteWins)
   same(await one.get('test3'), await two.get('test3'))
   await two.del('test3')
-  await two.pull(one, remoteWins)
+  await two.pull(one, [], remoteWins)
   same(two.cache.size, 1)
   same(await one.get('test3'), await two.get('test3'))
 
@@ -102,7 +103,7 @@ test('remote wins conflict', async () => {
   const _two = two
   await two.set('test3', { foo: 3 })
   two = await two.commit()
-  await two.pull(one, remoteWins)
+  await two.pull(one, [], remoteWins)
   same(two.cache.size, 1)
   same(await one.get('test3'), await two.get('test3'))
 
@@ -111,7 +112,7 @@ test('remote wins conflict', async () => {
   two = await two.commit()
   await two.del('test3')
   two = await two.commit()
-  await two.pull(one, remoteWins)
+  await two.pull(one, [], remoteWins)
   same(two.cache.size, 1)
   same(await one.get('test3'), await two.get('test3'))
 
@@ -127,7 +128,7 @@ test('remote wins conflict', async () => {
   one = await one.commit()
 
   two.set('test3', { foo: 51 })
-  await two.pull(one, remoteWins)
+  await two.pull(one, [], remoteWins)
   same(two.cache.size, 1)
   same(await two.has('test3'), false)
   two = await two.commit()

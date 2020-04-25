@@ -1,6 +1,7 @@
 /* globals it */
-const inmem = require('../src/store/inmemory')
-const { kv } = require('../')
+const Block = require('@ipld/block')
+const inmem = require('../src/stores/inmemory')
+const kv = require('../src/kv')(Block)
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
@@ -21,6 +22,14 @@ const basics = async kv => {
   same(obj, { hello: 'world' })
   return latest
 }
+
+test('string', async () => {
+  let db = await basics(kv)
+  await db.set('foo', 'bar')
+  same(await db.get('foo'), 'bar')
+  db = await db.commit()
+  same(await db.get('foo'), 'bar')
+})
 
 test('links', async () => {
   let db = await basics(kv)

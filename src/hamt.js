@@ -17,10 +17,10 @@ const isLink = isCID
 const mkload = get => cid => get(cid).then(block => block.decode())
 const store = { isEqual, isLink }
 
-const transaction = async function * (head, ops, get, Block, codec) {
+const transaction = async function * (head, ops, get, Block) {
   const blocks = []
   const save = obj => {
-    const block = Block.encoder(obj, codec)
+    const block = Block.encoder(obj, 'dag-cbor')
     blocks.push(block)
     return block.cid()
   }
@@ -43,9 +43,9 @@ const transaction = async function * (head, ops, get, Block, codec) {
 }
 
 const fixture = { save: noop, load: noop, ...store }
-const empty = (Block, codec) => {
+const empty = (Block) => {
   const map = new iamap.IAMap(fixture, config)
-  return Block.encoder(map.toSerializable(), codec)
+  return Block.encoder(map.toSerializable(), 'dag-cbor')
 }
 
 const _load = async (head, get) => {

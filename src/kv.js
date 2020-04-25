@@ -34,9 +34,9 @@ const createGet = (local, remote) => {
   return get
 }
 
-module.exports = (Block, codec = 'dag-cbor') => {
-  const { encode, decode, register } = valueLoader(Block, codec)
-  const toBlock = (value, className) => Block.encoder(validate(value, className), codec)
+module.exports = (Block) => {
+  const { encode, decode, register } = valueLoader(Block)
+  const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
     const rootBlock = await get(root)
@@ -50,7 +50,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     }
 
     let last
-    for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block, codec)) {
+    for await (const block of hamt.bulk(kvt['kv-v1'].head, opDecodes, get, Block)) {
       last = block
       yield block
     }
@@ -98,7 +98,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
           if (Block.isBlock(_block)) await this.store.put(_block)
           last = _block
         }
-        block = Block.encoder(last, codec)
+        block = Block.encoder(last, 'dag-cbor')
       }
       await this.store.put(block)
       return block
@@ -107,13 +107,17 @@ module.exports = (Block, codec = 'dag-cbor') => {
     async link (block) {
       block = await this.__encode(block)
       const cid = await block.cid()
-      return decode(cid, this.store)
+      return decode(cid, this.store, this.updater)
     }
 
     async set (key, block) {
       block = await this.__encode(block)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
+    }
+
+    async pendingTransactions () {
+      return Promise.all(Array.from(this.cache.values()).map(x => x[0].cid()))
     }
 
     async del (key) {
@@ -172,7 +176,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
 
     async get (key) {
       const block = await this.getBlock(key)
-      return decode(block.decode(), this.store)
+      return decode(block.decode(), this.store, this.updater)
     }
 
     async has (key) {
@@ -208,9 +212,13 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return new Transaction(await last.cid(), this.store)
     }
 
+    _encode () {
+      return commitTransaction(this)
+    }
+
     encode () {
       if (!this.cache.size) return (async function * (r) { yield r })(this.root)
-      return encoderTransaction(commitTransaction(this))
+      return encoderTransaction(this._encode())
     }
 
     get _dagdb () {
@@ -222,7 +230,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
       return root['kv-v1'].head
     }
 
-    async pull (trans, resolver = noResolver) {
+    async pull (trans, known = [], resolver = noResolver) {
+      if (trans._kv) {
+        return this.pull(await trans._kv, known, resolver)
+      }
       // we need to make all the cached blocks accessible
       // to the resolver
       const _blocks = new Map()
@@ -238,7 +249,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
       const oldRoot = this.root
       const newRoot = trans.root
       const stackedGet = createGet(local, remote)
-      const staged = await replicate(oldRoot, newRoot, stackedGet, resolver)
+      const staged = await replicate(oldRoot, newRoot, stackedGet, resolver, known)
       // now merge the latest options for each key from the remote
       // into the local cache for the transaction
       for (const [key, [op, block]] of staged.entries()) {
@@ -317,10 +328,10 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return ops
   }
 
-  const replicate = async (oldRoot, newRoot, get, resolver) => {
+  const replicate = async (oldRoot, newRoot, get, resolver, known) => {
     oldRoot = await get(oldRoot)
     newRoot = await get(newRoot)
-    const seen = new Set()
+    const seen = new Set(known.map(cid => cid.toString('base64')))
 
     const find = root => {
       const decoded = fromBlock(root, 'Transaction')
@@ -370,7 +381,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return staged
   }
 
-  const emptyHamt = hamt.empty(Block, codec)
+  const emptyHamt = hamt.empty(Block, 'dag-cbor')
   const emptyData = emptyHamt.cid().then(head => ({ 'kv-v1': { head, ops: [], prev: null } }))
   const empty = emptyData.then(data => toBlock(data, 'Transaction'))
 
@@ -383,6 +394,7 @@ module.exports = (Block, codec = 'dag-cbor') => {
     return new Transaction(root, store)
   }
   register('transaction', exports)
+  exports.register = register
   return exports
 }
 module.exports.createGet = createGet

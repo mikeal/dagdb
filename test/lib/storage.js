@@ -1,5 +1,5 @@
 /* globals it */
-const replicate = require('../../src/store/replicate')
+const replicate = require('../../src/stores/replicate')
 const test = it
 const Block = require('@ipld/block')
 const assert = require('assert')

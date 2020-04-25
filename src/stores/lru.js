@@ -9,6 +9,7 @@ class LRUStore {
     if (opts.lru) {
       this.lru = new LRU({ max: opts.lruSize || defaultSize, length: getLength })
     }
+    this.depthLimit = opts.depthLimit || 1024
   }
 
   async get (cid) {

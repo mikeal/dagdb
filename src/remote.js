@@ -1,8 +1,8 @@
 const createKV = require('./kv')
 const { fromBlock } = require('./util')
 
-module.exports = (Block, codec) => {
-  const { KV } = createKV(Block, codec)
+module.exports = (Block) => {
+  const { KV } = createKV(Block)
   class Remote extends KV {
     async getHead () {
       const block = await this.store.get(this.root)
