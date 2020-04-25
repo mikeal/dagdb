@@ -29,7 +29,6 @@ module.exports = (Block) => {
 
   class Remote {
     constructor (obj, db) {
-      if (!obj.info) throw new Error('Missing remote info')
       this.info = db.store.get(obj.info).then(block => block.decodeUnsafe())
       this.db = db
       this.rootDecode = obj

@@ -99,6 +99,45 @@ test('unsupported scheme', async () => {
   }
 })
 
+test('error: open and create w/o url', async () => {
+  const main = require('../src/bare')(Block)
+  try {
+    await main.open('test')
+    throw new Error('Did not throw')
+  } catch (e) {
+    if (e.message !== 'Not implemented') throw e
+  }
+  try {
+    await main.create('test')
+    throw new Error('Did not throw')
+  } catch (e) {
+    if (e.message !== 'Not implemented') throw e
+  }
+})
+
+test('error: bad info', async () => {
+  const { remote } = await createRemotes({ full: true })
+  try {
+    await remote.pull()
+    throw new Error('did not throw')
+  } catch (e) {
+    if (e.message !== 'Local remotes must use pullDatabase directly') throw e
+  }
+  try {
+    await remote.push()
+    throw new Error('did not throw')
+  } catch (e) {
+    if (e.message !== 'Local remotes cannot push') throw e
+  }
+  remote.info = { source: 'http://asdf', strategy: { keyed: 'asdf' } }
+  try {
+    await remote.push()
+    throw new Error('did not throw')
+  } catch (e) {
+    if (e.message !== 'Can only push databases using full merge strategy') throw e
+  }
+})
+
 if (!process.browser) {
   const stores = {}
   const updaters = {}
@@ -163,6 +202,9 @@ if (!process.browser) {
   })
 
   const handler = async (req, res) => {
+    if (req.url === '/empty') {
+      return res.end(JSON.stringify({}))
+    }
     const [id] = req.url.split('/').filter(x => x)
     const store = stores[id]
     const updater = updaters[id]
@@ -246,6 +288,23 @@ if (!process.browser) {
         throw new Error('Did not throw')
       } catch (e) {
         if (e.message !== 'Remote must have updater to use push') throw e
+      }
+    })
+    test('error: create already created', async () => {
+      const db = await create()
+      try {
+        await createDatabase.create(db.updater.infoUrl)
+        throw new Error('Did not throw')
+      } catch (e) {
+        if (e.message !== 'Database already created') throw e
+      }
+    })
+    test('error: open database not created', async () => {
+      try {
+        await createDatabase.open(`http://localhost:${port}/empty`)
+        throw new Error('Did not throw')
+      } catch (e) {
+        if (e.message !== 'Database has not been created') throw e
       }
     })
   })
