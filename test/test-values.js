@@ -23,6 +23,14 @@ const basics = async kv => {
   return latest
 }
 
+test('string', async () => {
+  let db = await basics(kv)
+  await db.set('foo', 'bar')
+  same(await db.get('foo'), 'bar')
+  db = await db.commit()
+  same(await db.get('foo'), 'bar')
+})
+
 test('links', async () => {
   let db = await basics(kv)
   const block = await db.getBlock('test')

@@ -193,6 +193,11 @@ if (!process.browser) {
       db2 = await db2.update()
       await db1.remotes.pull('a')
       same(await db1.get('test2'), { foo: 'bar' })
+      db1 = await db1.update()
+      await db1.remotes.pull('a')
+      const root = db1.root
+      db1 = await db1.update()
+      root.equals(db1.root)
     })
     test('updater', async () => {
       let db = await create()
@@ -215,6 +220,33 @@ if (!process.browser) {
       db = await db.commit()
       const remote = await db.remotes.get('origin')
       await remote.push()
+    })
+    const createReadonly = async (opts) => {
+      const db = await create()
+      const url = db.updater.infoUrl
+      const split = url.split('/').filter(x => x)
+      const id = split[split.length - 1]
+      const updater = { root: db.root }
+      updaters[id] = updater
+      return [db, updater]
+    }
+    test('pull readonly', async () => {
+      let [db1, updater] = await createReadonly()
+      await db1.set('foo', 'bar')
+      db1 = await db1.commit()
+      updater.root = db1.root
+      let db2 = await create()
+      const info = { source: db1.updater.infoUrl, strategy: { full: true } }
+      await db2.remotes.add('test', info)
+      await db2.remotes.pull('test')
+      same(await db2.get('foo'), 'bar')
+      db2 = await db2.update()
+      try {
+        await db2.remotes.push('test')
+        throw new Error('Did not throw')
+      } catch (e) {
+        if (e.message !== 'Remote must have updater to use push') throw e
+      }
     })
   })
 }

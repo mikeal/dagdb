@@ -9,7 +9,6 @@ module.exports = (Block, ...args) => {
   const database = createDatabase(Block)
   const stores = require('./stores')(Block)
   const updaters = require('./updaters')(Block)
-  const native = require('./native')
   const getInfo = async (id, ...args) => {
     const info = await getJSON(id)
     if (!id.endsWith('/')) id += '/'
@@ -24,7 +23,7 @@ module.exports = (Block, ...args) => {
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
     }
-    return native(id, ...args)
+    throw new Error('Not implemented')
   }
   const create = async (id, ...args) => {
     if (isHttp(id)) {
@@ -32,7 +31,7 @@ module.exports = (Block, ...args) => {
       if (info.root) throw new Error('Database already created')
       return database.create(store, updater, ...args)
     }
-    return native.create(id, ...args)
+    throw new Error('Not implemented')
   }
   return { create, open }
 }

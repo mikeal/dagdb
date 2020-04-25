@@ -30,14 +30,8 @@ module.exports = (Block) => {
   class Remote {
     constructor (obj, db) {
       if (!obj.info) throw new Error('Missing remote info')
-      let info
-      if (CID.isCID(obj.info)) {
-        info = db.store.get(obj.info).then(block => block.decodeUnsafe())
-      } else {
-        info = new Promise(resolve => resolve(info))
-      }
+      this.info = db.store.get(obj.info).then(block => block.decodeUnsafe())
       this.db = db
-      this.info = info
       this.rootDecode = obj
       this.kv = db._kv
     }
@@ -85,13 +79,13 @@ module.exports = (Block) => {
       const resp = await getJSON(info.source)
       // TODO: validate response data against a schema
       const root = new CID(resp.root)
+      await this.setStorage(info, resp)
+      const database = new Database(root, this.store, this.updater)
       if (this.rootDecode.head) {
-        if (root.equals(this.rootDecode.head)) {
+        if (this.rootDecode.head.equals(await database.getHead())) {
           return root // no changes since last merge
         }
       }
-      await this.setStorage(info, resp)
-      const database = new Database(root, this.store, this.updater)
       return this.pullDatabase(database, info.strategy)
     }
 
@@ -187,6 +181,7 @@ module.exports = (Block) => {
     }
 
     async get (name) {
+      if (this.pending.has(name)) return this.pending.get(name)
       const root = await this._root
       const cid = await hamt.get(root, name, this._get)
       if (!cid) throw new Error(`No remote named "${name}"`)
@@ -201,6 +196,10 @@ module.exports = (Block) => {
       }
       await remote.pull()
       this.pending.set(name, remote)
+    }
+
+    push (name, ...args) {
+      return this.get(name).then(r => r.push(...args))
     }
 
     async update (latest) {
@@ -343,6 +342,7 @@ module.exports = (Block) => {
     await updater.update(root)
     return new Database(root, store, updater)
   }
+  exports.Remote = Remote
   kv.register('database', exports)
   return exports
 }
