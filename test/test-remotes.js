@@ -1,7 +1,9 @@
 /* globals it */
 const Block = require('@ipld/block')
+const CID = require('cids')
 const bent = require('bent')
 const inmem = require('../src/stores/inmemory')
+const replicate = require('../src/stores/replicate')
 const createUpdater = require('../src/updaters/kv')
 const database = require('../src/database')(Block)
 const createKV = require('./lib/mock-kv')
@@ -9,6 +11,8 @@ const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
 const ok = assert.ok
+
+const getJSON = bent('json')
 
 const create = async () => {
   const store = inmem()
@@ -99,6 +103,16 @@ test('unsupported scheme', async () => {
   }
 })
 
+test('error: no remote', async () => {
+  const { db } = await create()
+  try {
+    await db.remotes.get('test')
+    throw new Error('did not throw')
+  } catch (e) {
+    if (e.message !== 'No remote named "test"') throw e
+  }
+})
+
 test('error: open and create w/o url', async () => {
   const main = require('../src/bare')(Block)
   try {
@@ -115,7 +129,7 @@ test('error: open and create w/o url', async () => {
   }
 })
 
-test('error: bad info', async () => {
+test('error: bad info, local pull', async () => {
   const { remote } = await createRemotes({ full: true })
   try {
     await remote.pull()
@@ -123,13 +137,19 @@ test('error: bad info', async () => {
   } catch (e) {
     if (e.message !== 'Local remotes must use pullDatabase directly') throw e
   }
+})
+test('error: bad info, push local', async () => {
+  const { remote } = await createRemotes({ full: true })
   try {
     await remote.push()
     throw new Error('did not throw')
   } catch (e) {
     if (e.message !== 'Local remotes cannot push') throw e
   }
-  remote.info = { source: 'http://asdf', strategy: { keyed: 'asdf' } }
+})
+test('error: bad info, push keyed merge', async () => {
+  const { remote } = await createRemotes({ full: true })
+  remote._info = { source: 'http://asdf', strategy: { keyed: 'asdf' } }
   try {
     await remote.push()
     throw new Error('did not throw')
@@ -137,7 +157,6 @@ test('error: bad info', async () => {
     if (e.message !== 'Can only push databases using full merge strategy') throw e
   }
 })
-
 if (!process.browser) {
   const stores = {}
   const updaters = {}
@@ -288,6 +307,64 @@ if (!process.browser) {
         throw new Error('Did not throw')
       } catch (e) {
         if (e.message !== 'Remote must have updater to use push') throw e
+      }
+    })
+    test('error: concurrent pushes', async () => {
+      let db = await create()
+      const oldRoot = db.root
+      const db2 = await create()
+      const info = { source: db.updater.infoUrl, strategy: { full: true } }
+      delete db.updater
+      await db.remotes.add('origin', info)
+      db = await db.commit()
+      const remote1 = await db.remotes.get('origin')
+      await replicate(db.root, db.store, db2.store)
+      const dec = { ...remote1.rootDecode }
+      const remote2 = new database.Remote({ ...dec }, db2)
+      try {
+        await Promise.all([remote1.push(), remote2.push()])
+        throw new Error('did not throw')
+      } catch (e) {
+        if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
+      }
+      const url = info.source
+      const split = url.split('/').filter(x => x)
+      const id = split[split.length - 1]
+      const root = new CID((await getJSON(info.source)).root)
+      const updater = { root, update: () => oldRoot }
+      updaters[id] = updater
+      try {
+        await remote1.push()
+        throw new Error('did not throw')
+      } catch (e) {
+        if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
+      }
+    })
+    test('error: update old reference', async () => {
+      let db = await create()
+      const oldHead = await db.getHead()
+      const url = db.updater.infoUrl
+      const split = url.split('/').filter(x => x)
+      const id = split[split.length - 1]
+      const info = { source: url, strategy: { full: true } }
+      await db.remotes.add('origin', info)
+      await db.set('blah', 'test')
+      db = await db.update()
+      const newHead = await db.getHead()
+      const newRoot = db.root
+      await db.set('another', 'test')
+      db = await db.update()
+      assert.ok(!oldHead.equals(newHead))
+      const remote = await db.remotes.get('origin')
+      const update = () => {
+        throw new Error('should not hit updater')
+      }
+      updaters[id] = { root: newRoot, update }
+      try {
+        await remote.push()
+        throw new Error('did not throw')
+      } catch (e) {
+        if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
       }
     })
     test('error: create already created', async () => {

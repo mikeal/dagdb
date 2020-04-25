@@ -29,10 +29,16 @@ module.exports = (Block) => {
 
   class Remote {
     constructor (obj, db) {
-      this.info = db.store.get(obj.info).then(block => block.decodeUnsafe())
       this.db = db
       this.rootDecode = obj
       this.kv = db._kv
+    }
+
+    get info () {
+      if (!this._info) {
+        this._info = this.db.store.get(this.rootDecode.info).then(block => block.decodeUnsafe())
+      }
+      return this._info
     }
 
     async setStorage (info, resp) {
@@ -52,15 +58,16 @@ module.exports = (Block) => {
       if (!info.strategy.full) {
         throw new Error('Can only push databases using full merge strategy')
       }
+      const local = this.rootDecode.head
       const resp = await getJSON(info.source)
       if (!resp.updater) throw new Error('Remote must have updater to use push')
       const root = new CID(resp.root)
 
       await this.setStorage(info, resp)
 
-      const db = new Database(root, this.store, this.updater)
+      const db = new Database(root, this.store)
       const head = await db.getHead()
-      if (!head.equals(this.rootDecode.head)) {
+      if (!head.equals(local)) {
         throw new Error('Remote has updated since last pull, re-pull before pushing')
       }
       await replicate(this.db.root, this.db.store, this.store)
