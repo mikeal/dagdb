@@ -2,7 +2,7 @@ const { fromBlock, validate, readonly } = require('./utils')
 const createKV = require('./kv')
 const createStores = require('./stores')
 const createUpdaters = require('./updaters')
-const createRemotes = require('./remote')
+const createRemotes = require('./remotes')
 const createIndexes = require('./indexes')
 const CID = require('cids')
 
