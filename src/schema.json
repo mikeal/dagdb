@@ -165,92 +165,74 @@
       "kind": "list",
       "valueType": "PathSegments"
     },
+    "ReduceName": {
+      "kind": "enum",
+      "members": {
+        "sum": null,
+        "count": null
+      },
+      "representation": {
+        "string": {}
+      }
+    },
     "Reduces": {
       "kind": "list",
-      "valueType": "String"
+      "valueType": "ReduceName"
     },
     "MapFunction": {
       "kind": "string"
     },
-    "UnorderedKeyedIndexTransform": {
-      "kind": "union",
-      "representation": {
-        "kinded": {
-          "list": "Paths",
-          "string": "MapFunction"
-        }
-      }
-    },
-    "UnorderedKeyedIndexValue": {
+    "UKIValues": {
       "kind": "struct",
       "fields": {
-        "values": {
-          "type": {
-            "kind": "link",
-            "expectedType": "HashMapRoot"
-          }
+        "path": {
+          "type": "PathSegments"
         },
-        "reduced": {
-          "type": "map",
-          "optional": true
+        "value": {
+          "type": "Any"
         }
       },
       "representation": {
         "tuple": {}
       }
     },
-    "IndexSetOperationValue": {
-      "kind": "union",
-      "representation": {
-        "kinded": {
-          "link": "Link",
-          "string": "String",
-          "int": "Int",
-          "float": "Float",
-          "bool": "Bool",
-          "null": "Null"
-        }
-      }
-    },
-    "IndexSetOperation": {
+    "UKIReduceValues": {
       "kind": "struct",
       "fields": {
-        "key": {
-          "type": "String"
-        },
-        "val": {
-          "type": "IndexSetOperationValue"
-        }
-      },
-      "representation": {
-        "map": {}
-      }
-    },
-    "UnorderedIndexOperation": {
-      "kind": "struct",
-      "fields": {
-        "op": {
-          "type": {
-            "kind": "link",
-            "expectedType": "IndexSetOperation"
-          }
-        },
-        "transform": {
-          "type": {
-            "kind": "link",
-            "expectedType": "UnorderedKeyedIndexTransform"
-          }
+        "path": {
+          "type": "PathSegments"
         },
         "value": {
-          "type": "Link"
-        },
-        "reduces": {
-          "type": "Reduces",
-          "optional": true
+          "type": "Int"
         }
       },
       "representation": {
-        "map": {}
+        "tuple": {}
+      }
+    },
+    "Reduced": {
+      "kind": "map",
+      "keyType": "ReduceName",
+      "valueType": "UKIReduceValues"
+    },
+    "UnorderedKeyedIndexValue": {
+      "kind": "struct",
+      "fields": {
+        "source": {
+          "type": {
+            "kind": "link",
+            "expectedType": "SetOperation"
+          }
+        },
+        "values": {
+          "type": "UKIValues"
+        },
+        "reduced": {
+          "type": "Reduced"
+        }
+      },
+      "representation": {
+        "tuple": {}
       }
     },
     "IndexUnion": {
@@ -264,18 +246,35 @@
         }
       }
     },
+    "UKIInfo": {
+      "kind": "struct",
+      "fields": {
+        "paths": {
+          "type": {
+            "kind": "link",
+            "expectedType": "Paths"
+          }
+        },
+        "reduces": {
+          "type": "Reduces"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
     "IndexInfoUnion": {
       "kind": "union",
       "representation": {
         "keyed": {
           "uki": {
             "kind": "link",
-            "expectedType": "UnorderedKeyedIndexInfo"
+            "expectedType": "UKIInfo"
           }
         }
       }
     },
-    "Index": {
+    "Indexes": {
       "kind": "struct",
       "fields": {
         "head": {

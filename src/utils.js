@@ -1,3 +1,4 @@
+const hamt = require('./hamt')
 const schema = require('./schema.json')
 const validate = require('ipld-schema-validation')(schema)
 const fromBlock = (block, className) => validate(block.decode(), className)
@@ -37,6 +38,15 @@ class Lazy {
     this.pending = new Map()
     this.store = db.store
     this._get = db.store.get.bind(db.store)
+  }
+
+  async _get (name) {
+    if (this.pending.has(name)) return this.pending.get(name)
+    const root = await this._root
+    const cid = await hamt.get(root, name, this._get)
+    if (!cid) throw new Error(`No remote named "${name}"`)
+    const block = await this.db.store.get(cid)
+    return block
   }
 }
 

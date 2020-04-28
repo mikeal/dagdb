@@ -25,7 +25,7 @@ module.exports = (Block) => {
   const stores = createStores(Block)
   const updaters = createUpdaters(Block)
   const remoteExports = createRemotes(Block, stores, toBlock, updaters, CID)
-  const indexExports = createIndexes(Block)
+  const indexExports = createIndexes(Block, fromBlock)
   const { Remotes, Remote } = remoteExports
   const { Indexes } = indexExports
 

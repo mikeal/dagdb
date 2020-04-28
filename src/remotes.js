@@ -156,11 +156,7 @@ module.exports = (Block, stores, toBlock, updaters, CID) => {
     }
 
     async get (name) {
-      if (this.pending.has(name)) return this.pending.get(name)
-      const root = await this._root
-      const cid = await hamt.get(root, name, this._get)
-      if (!cid) throw new Error(`No remote named "${name}"`)
-      const block = await this.db.store.get(cid)
+      const block = await this._get(name)
       const decoded = fromBlock(block, 'Remote')
       return new Remote(decoded, this.db)
     }

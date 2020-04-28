@@ -73,49 +73,45 @@ type Transaction union {
 ```sh
 type PathSegments [String]
 type Paths [PathSegments]
-type Reduces [String]
+type ReduceName enum {
+  | sum
+  | count
+}
+type Reduces [ReduceName]
 type MapFunction string
 
-type UnorderedKeyedIndexTransform union {
-  | Paths list
-  | MapFunction string
-} representation kinded
-
-type UnorderedKeyedIndexValue struct {
-  values &HashMapRoot
-  reduced optional map
+type UKIValues struct {
+  path PathSegments
+  value Any
 } representation tuple
 
-type IndexSetOperationValue union {
-  | Link link
-  | String string
-  | Int int
-  | Float float
-  | Bool bool
-  | Null null
-} representation kinded
+type UKIReduceValues struct {
+  path PathSegments
+  value Int
+} representation tuple
 
-type IndexSetOperation struct {
-  key String
-  val IndexSetOperationValue
-}
+type Reduced { ReduceName: UKIReduceValues }
 
-type UnorderedIndexOperation struct {
-  op &IndexSetOperation
-  transform &UnorderedKeyedIndexTransform
-  value Link
-  reduces optional Reduces
-}
+type UnorderedKeyedIndexValue struct {
+  source &SetOperation
+  values UKIValues
+  reduced Reduced
+} representation tuple
 
 type IndexUnion union {
-  | &HashMapRoot "uki"
+  | &HashMapRoot "uki" # { PrimaryDBKey: UnorderedKeyedIndexValue }
 } representation keyed
+
+type UKIInfo struct {
+  paths &Paths
+  reduces Reduces
+}
 
 type IndexInfoUnion union {
-  | &UnorderedKeyedIndexInfo "uki"
+  | &UKIInfo "uki"
 } representation keyed
 
-type Index struct {
+type Indexes struct {
   head &HashMapRoot # local KV root
   rmap &HashMapRoot # map of KV entries to indexes transactions
   index IndexUnion
