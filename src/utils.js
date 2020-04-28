@@ -29,4 +29,24 @@ const encoderTransaction = async function * (iter) {
   yield last.cid()
 }
 
-module.exports = { NotFound, readonly, isCID, fromBlock, fromBlockUnsafe, validate, encoderTransaction }
+class Lazy {
+  constructor (db) {
+    const root = db.getRoot().then(root => root['db-v1'][this.prop])
+    readonly(this, '_root', root)
+    this.db = db
+    this.pending = new Map()
+    this.store = db.store
+    this._get = db.store.get.bind(db.store)
+  }
+}
+
+module.exports = {
+  Lazy,
+  NotFound,
+  readonly,
+  isCID,
+  fromBlock,
+  fromBlockUnsafe,
+  validate,
+  encoderTransaction
+}
