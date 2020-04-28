@@ -157,9 +157,13 @@
         }
       }
     },
-    "Paths": {
+    "PathSegments": {
       "kind": "list",
       "valueType": "String"
+    },
+    "Paths": {
+      "kind": "list",
+      "valueType": "PathSegments"
     },
     "Reduces": {
       "kind": "list",
@@ -195,13 +199,40 @@
         "tuple": {}
       }
     },
+    "IndexSetOperationValue": {
+      "kind": "union",
+      "representation": {
+        "kinded": {
+          "link": "Link",
+          "string": "String",
+          "int": "Int",
+          "float": "Float",
+          "bool": "Bool",
+          "null": "Null"
+        }
+      }
+    },
+    "IndexSetOperation": {
+      "kind": "struct",
+      "fields": {
+        "key": {
+          "type": "String"
+        },
+        "val": {
+          "type": "IndexSetOperationValue"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
     "UnorderedIndexOperation": {
       "kind": "struct",
       "fields": {
         "op": {
           "type": {
             "kind": "link",
-            "expectedType": "SetOperation"
+            "expectedType": "IndexSetOperation"
           }
         },
         "transform": {

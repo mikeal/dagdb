@@ -71,7 +71,8 @@ type Transaction union {
 # Index
 
 ```sh
-type Paths [String]
+type PathSegments [String]
+type Paths [PathSegments]
 type Reduces [String]
 type MapFunction string
 
@@ -85,12 +86,27 @@ type UnorderedKeyedIndexValue struct {
   reduced optional map
 } representation tuple
 
+type IndexSetOperationValue union {
+  | Link link
+  | String string
+  | Int int
+  | Float float
+  | Bool bool
+  | Null null
+} representation kinded
+
+type IndexSetOperation struct {
+  key String
+  val IndexSetOperationValue
+}
+
 type UnorderedIndexOperation struct {
-  op &SetOperation
+  op &IndexSetOperation
   transform &UnorderedKeyedIndexTransform
   value Link
   reduces optional Reduces
 }
+
 type IndexUnion union {
   | &HashMapRoot "uki"
 } representation keyed
