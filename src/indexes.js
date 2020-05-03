@@ -15,7 +15,7 @@ const lazyprop = (obj, name, fn) => {
   Object.defineProperty(obj, name, { get })
 }
 
-module.exports = (Block, fromBlock) => {
+module.exports = (Block, fromBlock, kv) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const exports = {}
 
@@ -29,7 +29,7 @@ module.exports = (Block, fromBlock) => {
 
   class Props {
     constructor (indexes) {
-      this._indexes = indexes
+      this.indexes = indexes
       lazyprop(this, 'root', () => indexes.rootData.then(data => data.props))
       lazyprop(this, 'rootBlock', () => this.root.then(cid => indexes.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
@@ -40,6 +40,15 @@ module.exports = (Block, fromBlock) => {
       const root = await this.rootData
       if (!root[name]) throw new Error(`No property index for "${name}"`)
       return new Prop(this, root[name])
+    }
+
+    async add (name) {
+      const db = this.indexes.db
+      const head = (await db.getRoot())['db-v1'].kv
+      const kvdb = kv(head, db.store)
+      for await (const [key, value] of kvdb.all()) {
+        console.log({key, value})
+      }
     }
 
     get (name) {
