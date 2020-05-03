@@ -1,4 +1,4 @@
-const { fromBlock, Lazy } = require('./utils')
+const { Lazy } = require('./utils')
 const hamt = require('./hamt')
 const bent = require('bent')
 const getJSON = bent('json')
@@ -155,10 +155,8 @@ module.exports = (Block, stores, toBlock, updaters, CID) => {
       return remote
     }
 
-    async get (name) {
-      const block = await this._get(name)
-      const decoded = fromBlock(block, 'Remote')
-      return new Remote(decoded, this.db)
+    get (name) {
+      return this._get(name, Remote, 'Remote')
     }
 
     async pull (name, remote) {
