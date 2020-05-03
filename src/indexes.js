@@ -1,3 +1,5 @@
+const { validate } = require('./utils')
+
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only
 // creating those promises when the properties are accessed so that
@@ -13,8 +15,10 @@ const lazyprop = (obj, name, fn) => {
   Object.defineProperty(obj, name, { get })
 }
 
-module.exports = (Block, fromBlock) => {
+module.exports = (Block, fromBlock, kv) => {
+  const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const exports = {}
+  const [, emptyHamt] = kv.empties
 
   class Prop {
     constructor (props, root) {
@@ -80,6 +84,9 @@ module.exports = (Block, fromBlock) => {
       return kvRoot
     }
   }
+  const emptyPropMap = emptyHamt.cid().then(head => toBlock({head, index: {}}, 'PropMap'))
+  const emptyIndexes = emptyPropMap.then(block => block.cid()).then(props => toBlock({ props }, 'Indexes'))
+  exports.empties = [ emptyIndexes, emptyPropMap ]
   exports.Indexes = Indexes
   return exports
 }

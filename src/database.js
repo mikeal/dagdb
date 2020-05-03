@@ -25,7 +25,7 @@ module.exports = (Block) => {
   const stores = createStores(Block)
   const updaters = createUpdaters(Block)
   const remoteExports = createRemotes(Block, stores, toBlock, updaters, CID)
-  const indexExports = createIndexes(Block, fromBlock)
+  const indexExports = createIndexes(Block, fromBlock, kv)
   const { Remotes, Remote } = remoteExports
   const { Indexes } = indexExports
 
@@ -127,9 +127,11 @@ module.exports = (Block) => {
   const empty = (async () => {
     const [kvBlock, hamtBlock] = await Promise.all(kv.empties)
     const [kvCID, hamtCID] = await Promise.all([kvBlock.cid(), hamtBlock.cid()])
-    return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes: hamtCID } }, 'Database')
+    const [indexesBlock] = await Promise.all(indexExports.empties)
+    const indexes = await indexesBlock.cid()
+    return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes } }, 'Database')
   })()
-  exports.empties = [empty, ...kv.empties]
+  exports.empties = [empty, ...kv.empties, ...indexExports.empties]
   exports.create = async (store, updater) => {
     const empties = await Promise.all(exports.empties)
     await Promise.all(empties.map(b => store.put(b)))
