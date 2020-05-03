@@ -15,10 +15,9 @@ const lazyprop = (obj, name, fn) => {
   Object.defineProperty(obj, name, { get })
 }
 
-module.exports = (Block, fromBlock, kv) => {
+module.exports = (Block, fromBlock) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const exports = {}
-  const [, emptyHamt] = kv.empties
 
   class Prop {
     constructor (props, root) {
@@ -84,9 +83,9 @@ module.exports = (Block, fromBlock, kv) => {
       return kvRoot
     }
   }
-  const emptyPropMap = emptyHamt.cid().then(head => toBlock({head, index: {}}, 'PropMap'))
-  const emptyIndexes = emptyPropMap.then(block => block.cid()).then(props => toBlock({ props }, 'Indexes'))
-  exports.empties = [ emptyIndexes, emptyPropMap ]
+  const emptyMap = Block.encoder({}, 'dag-cbor')
+  const emptyIndexes = emptyMap.cid().then(props => toBlock({ props }, 'Indexes'))
+  exports.empties = [ emptyIndexes, emptyMap ]
   exports.Indexes = Indexes
   return exports
 }

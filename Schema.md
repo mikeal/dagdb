@@ -77,12 +77,8 @@ type PropIndex struct {
   map &HashMapRoot # map of { DBKey: PropValue }
 }
 type Props { String: &PropIndex }
-type PropMap struct {
-  head &HashMapRoot # local KV root
-  index Props
-}
 type Indexes struct {
-  props &PropsIndex
+  props &Props
 }
 ```
 

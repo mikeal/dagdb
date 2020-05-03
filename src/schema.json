@@ -185,30 +185,13 @@
         "expectedType": "PropIndex"
       }
     },
-    "PropMap": {
-      "kind": "struct",
-      "fields": {
-        "head": {
-          "type": {
-            "kind": "link",
-            "expectedType": "HashMapRoot"
-          }
-        },
-        "index": {
-          "type": "Props"
-        }
-      },
-      "representation": {
-        "map": {}
-      }
-    },
     "Indexes": {
       "kind": "struct",
       "fields": {
         "props": {
           "type": {
             "kind": "link",
-            "expectedType": "PropsIndex"
+            "expectedType": "Props"
           }
         }
       },
