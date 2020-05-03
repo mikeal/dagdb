@@ -157,124 +157,35 @@
         }
       }
     },
-    "PathSegments": {
-      "kind": "list",
-      "valueType": "String"
-    },
-    "Paths": {
-      "kind": "list",
-      "valueType": "PathSegments"
-    },
-    "ReduceName": {
-      "kind": "enum",
-      "members": {
-        "sum": null,
-        "count": null
-      },
-      "representation": {
-        "string": {}
-      }
-    },
-    "Reduces": {
-      "kind": "list",
-      "valueType": "ReduceName"
-    },
-    "MapFunction": {
-      "kind": "string"
-    },
-    "UKIValues": {
+    "PropIndex": {
       "kind": "struct",
       "fields": {
-        "path": {
-          "type": "PathSegments"
+        "count": {
+          "type": "int"
         },
-        "value": {
-          "type": "Any"
-        }
-      },
-      "representation": {
-        "tuple": {}
-      }
-    },
-    "UKIReduceValues": {
-      "kind": "struct",
-      "fields": {
-        "path": {
-          "type": "PathSegments"
+        "sum": {
+          "type": "int"
         },
-        "value": {
-          "type": "Int"
-        }
-      },
-      "representation": {
-        "tuple": {}
-      }
-    },
-    "Reduced": {
-      "kind": "map",
-      "keyType": "ReduceName",
-      "valueType": "UKIReduceValues"
-    },
-    "UnorderedKeyedIndexValue": {
-      "kind": "struct",
-      "fields": {
-        "source": {
+        "map": {
           "type": {
-            "kind": "link",
-            "expectedType": "SetOperation"
-          }
-        },
-        "values": {
-          "type": "UKIValues"
-        },
-        "reduced": {
-          "type": "Reduced"
-        }
-      },
-      "representation": {
-        "tuple": {}
-      }
-    },
-    "IndexUnion": {
-      "kind": "union",
-      "representation": {
-        "keyed": {
-          "uki": {
             "kind": "link",
             "expectedType": "HashMapRoot"
           }
-        }
-      }
-    },
-    "UKIInfo": {
-      "kind": "struct",
-      "fields": {
-        "paths": {
-          "type": {
-            "kind": "link",
-            "expectedType": "Paths"
-          }
-        },
-        "reduces": {
-          "type": "Reduces"
         }
       },
       "representation": {
         "map": {}
       }
     },
-    "IndexInfoUnion": {
-      "kind": "union",
-      "representation": {
-        "keyed": {
-          "uki": {
-            "kind": "link",
-            "expectedType": "UKIInfo"
-          }
-        }
+    "Props": {
+      "kind": "map",
+      "keyType": "String",
+      "valueType": {
+        "kind": "link",
+        "expectedType": "PropIndex"
       }
     },
-    "Indexes": {
+    "PropMap": {
       "kind": "struct",
       "fields": {
         "head": {
@@ -283,17 +194,22 @@
             "expectedType": "HashMapRoot"
           }
         },
-        "rmap": {
+        "index": {
+          "type": "Props"
+        }
+      },
+      "representation": {
+        "map": {}
+      }
+    },
+    "Indexes": {
+      "kind": "struct",
+      "fields": {
+        "props": {
           "type": {
             "kind": "link",
-            "expectedType": "HashMapRoot"
+            "expectedType": "PropsIndex"
           }
-        },
-        "index": {
-          "type": "IndexUnion"
-        },
-        "info": {
-          "type": "IndexInfoUnion"
         }
       },
       "representation": {
@@ -411,7 +327,7 @@
         "indexes": {
           "type": {
             "kind": "link",
-            "expectedType": "HashMapRoot"
+            "expectedType": "Indexes"
           }
         },
         "remotes": {

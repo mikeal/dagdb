@@ -68,61 +68,23 @@ type Transaction union {
   | TransactionV1 "kv-v1"
 } representation keyed
 ```
-# Index
+# Indexes
 
 ```sh
-type PathSegments [String]
-type Paths [PathSegments]
-type ReduceName enum {
-  | sum
-  | count
+type PropIndex struct {
+  count int
+  sum int
+  map &HashMapRoot # map of { DBKey: PropValue }
 }
-type Reduces [ReduceName]
-type MapFunction string
-
-type UKIValues struct {
-  path PathSegments
-  value Any
-} representation tuple
-
-type UKIReduceValues struct {
-  path PathSegments
-  value Int
-} representation tuple
-
-type Reduced { ReduceName: UKIReduceValues }
-
-type UnorderedKeyedIndexValue struct {
-  source &SetOperation
-  values UKIValues
-  reduced Reduced
-} representation tuple
-
-type IndexUnion union {
-  | &HashMapRoot "uki" # { PrimaryDBKey: UnorderedKeyedIndexValue }
-} representation keyed
-
-type UKIInfo struct {
-  paths &Paths
-  reduces Reduces
-}
-
-type IndexInfoUnion union {
-  | &UKIInfo "uki"
-} representation keyed
-
-type Indexes struct {
+type Props { String: &PropIndex }
+type PropMap struct {
   head &HashMapRoot # local KV root
-  rmap &HashMapRoot # map of KV entries to indexes transactions
-  index IndexUnion
-  info IndexInfoUnion
+  index Props
+}
+type Indexes struct {
+  props &PropsIndex
 }
 ```
-
-`rmap` is a HAMT that maps the primary key data to the resolved secondary
-index. This way, if the value for the secondary index is modified or the
-value removed from the primary store the index can be updated to reflect
-the new state.
 
 # DagDB Type
 
@@ -192,7 +154,7 @@ to the device/store. Tags typically **are** pushed to a remote.
 ```sh
 type DatabaseV1 struct {
   kv &Transaction
-  indexes &HashMapRoot # Values type is Index
+  indexes &Indexes # Values type is Index
   remotes &HashMapRoot # Values type is Remote
 }
 
