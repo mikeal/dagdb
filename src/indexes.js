@@ -1,4 +1,5 @@
 const { validate } = require('./utils')
+const hamt = require('./hamt')
 
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only
@@ -17,14 +18,73 @@ const lazyprop = (obj, name, fn) => {
 
 module.exports = (Block, fromBlock, kv) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
+  const emptyProp = kv.empties[2].cid().then(map => toBlock({ count: 0, sum: 0, map }, 'PropIndex'))
   const exports = {}
 
+  const updatePropIndex = async function * (prop, ops) {
+    if (prop.updated) throw new Error('Index has already been updated')
+    prop.updated = true
+    const root = await prop.rootData
+    const kvdb = await prop.props.getKV()
+    const hamtRoot = root.map
+    const path = prop.name.split('/').filter(x => x)
+
+    let keys = Array.from(new Set(ops.map(op => op.set ? op.set.key : op.del.key)))
+
+    const has = await Promise.all(keys.map(key => hamt.has(hamtRoot, key)))
+    keys = new Set(keys.filter((v, i) => has[i]))
+
+    root.count -= keys.size
+
+    const updates = []
+    for (const op of ops) {
+      if (!op.set) continue
+      const { key, val } = op.set
+      let value = await kvdb.getValue(val)
+      const lookup = [...path]
+      while (lookup.length && typeof value[lookup[0]] !== 'undefined') {
+        value = value[lookup.shift()]
+        if (typeof value === 'function') value = await value()
+      }
+      if (lookup.length) {
+        if (keys.has(key)) {
+          updates.push({ del: { key } })
+        }
+        continue
+      }
+      if (typeof value === 'number') {
+        root.sum += value
+      }
+      root.count += 1
+      // TODO: property encode value to handle links
+      updates.push({ set: { key, val: value } })
+    }
+    let last
+    for await (const block of hamt.bulk(hamtRoot, updates)) {
+      yield block
+      last = block
+    }
+    root.map = await last.cid()
+    prop.newRootBlock = toBlock(root)
+    yield prop.newRootBlock
+  }
+
   class Prop {
-    constructor (props, root) {
+    constructor (props, root, name) {
       this.root = root
       lazyprop(this, 'rootBlock', () => this.root.then(cid => props.indexes.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
+      this.name = name
     }
+
+    update (ops) {
+      return updatePropIndex(this, ops)
+    }
+  }
+  Prop.create = (props, name) => {
+    const prop = new Prop(props, emptyProp.then(block => block.cid()), name)
+    prop._rootData = emptyProp.then(block => block.decode())
+    return prop
   }
 
   class Props {
@@ -42,13 +102,30 @@ module.exports = (Block, fromBlock, kv) => {
       return new Prop(this, root[name])
     }
 
-    async add (name) {
+    async getKV () {
       const db = this.indexes.db
       const head = (await db.getRoot())['db-v1'].kv
       const kvdb = kv(head, db.store)
+      return kvdb
+    }
+
+    async add (name) {
+      // TODO: check if already added and throw
+      const prop = Prop.create(this, name)
+      const kvdb = await this.getKV()
+      const ops = []
       for await (const [key, value] of kvdb.all()) {
-        console.log({key, value})
+        ops.push({ set: { key, val: value } })
       }
+      const promises = []
+      let last
+      for await (const block of prop.update(ops)) {
+        promises.push(this.indexes.db.store.put(block))
+        last = block
+      }
+      await Promise.all(promises)
+      prop.newRoot = last
+      this.pending.set(name, prop)
     }
 
     get (name) {
@@ -88,13 +165,14 @@ module.exports = (Block, fromBlock, kv) => {
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
       this.props = new Props(this)
     }
+
     async update (kvRoot) {
       return kvRoot
     }
   }
   const emptyMap = Block.encoder({}, 'dag-cbor')
   const emptyIndexes = emptyMap.cid().then(props => toBlock({ props }, 'Indexes'))
-  exports.empties = [ emptyIndexes, emptyMap ]
+  exports.empties = [emptyIndexes, emptyMap]
   exports.Indexes = Indexes
   return exports
 }

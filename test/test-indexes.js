@@ -1,18 +1,12 @@
 /* globals describe, it */
 const Block = require('@ipld/block')
-const CID = require('cids')
-const bent = require('bent')
 const inmem = require('../src/stores/inmemory')
-const replicate = require('../src/stores/replicate')
 const createUpdater = require('../src/updaters/kv')
 const database = require('../src/database')(Block)
 const createKV = require('./lib/mock-kv')
 const test = it
 const assert = require('assert')
 const same = assert.deepStrictEqual
-const ok = assert.ok
-
-const getJSON = bent('json')
 
 const create = async (fixture) => {
   const store = inmem()
@@ -26,8 +20,6 @@ const create = async (fixture) => {
   }
   return db
 }
-
-const v1 = 'db-v1'
 
 const fixture = {
   test1: { one: 1, two: 2 },
