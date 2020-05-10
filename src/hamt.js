@@ -58,6 +58,11 @@ const get = async (head, key, get) => {
   const map = await _load(head, get)
   return map.get(key)
 }
+const has = async (head, key, _get) => {
+  const val = await get(head, key, _get)
+  if (typeof val === 'undefined') return false
+  return true
+}
 const all = (root, get) => {
   const iter = async function * () {
     const map = await _load(root, get)
@@ -73,3 +78,4 @@ module.exports.empty = empty
 module.exports.get = get
 module.exports._store = store
 module.exports._noop = noop
+module.exports.has = has

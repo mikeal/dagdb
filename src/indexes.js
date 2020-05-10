@@ -18,7 +18,9 @@ const lazyprop = (obj, name, fn) => {
 
 module.exports = (Block, fromBlock, kv) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
-  const emptyProp = kv.empties[2].cid().then(map => toBlock({ count: 0, sum: 0, map }, 'PropIndex'))
+  const emptyHamt = hamt.empty(Block, 'dag-cbor')
+
+  const emptyProp = emptyHamt.cid().then(map => toBlock({ count: 0, sum: 0, map }, 'PropIndex'))
   const exports = {}
 
   const updatePropIndex = async function * (prop, ops) {
@@ -26,12 +28,13 @@ module.exports = (Block, fromBlock, kv) => {
     prop.updated = true
     const root = await prop.rootData
     const kvdb = await prop.props.getKV()
+    const getBlock = prop.props.indexes.getBlock
     const hamtRoot = root.map
     const path = prop.name.split('/').filter(x => x)
 
     let keys = Array.from(new Set(ops.map(op => op.set ? op.set.key : op.del.key)))
 
-    const has = await Promise.all(keys.map(key => hamt.has(hamtRoot, key)))
+    const has = await Promise.all(keys.map(key => hamt.has(hamtRoot, key, getBlock)))
     keys = new Set(keys.filter((v, i) => has[i]))
 
     root.count -= keys.size
@@ -52,20 +55,20 @@ module.exports = (Block, fromBlock, kv) => {
         }
         continue
       }
+      root.count += 1
       if (typeof value === 'number') {
         root.sum += value
       }
-      root.count += 1
       // TODO: property encode value to handle links
       updates.push({ set: { key, val: value } })
     }
     let last
-    for await (const block of hamt.bulk(hamtRoot, updates)) {
+    for await (const block of hamt.bulk(hamtRoot, updates, getBlock, Block)) {
       yield block
       last = block
     }
     root.map = await last.cid()
-    prop.newRootBlock = toBlock(root)
+    prop.newRootBlock = toBlock(root, 'PropIndex')
     yield prop.newRootBlock
   }
 
@@ -75,6 +78,7 @@ module.exports = (Block, fromBlock, kv) => {
       lazyprop(this, 'rootBlock', () => this.root.then(cid => props.indexes.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
       this.name = name
+      this.props = props
     }
 
     update (ops) {
@@ -139,7 +143,7 @@ module.exports = (Block, fromBlock, kv) => {
       let count = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
-        const data = index.rootData
+        const data = await index.rootData
         count += data.count
       }
       return count
@@ -149,8 +153,8 @@ module.exports = (Block, fromBlock, kv) => {
       let sum = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
-        const data = index.rootData
-        sum += data.count
+        const data = await index.rootData
+        sum += data.sum
       }
       return sum
     }

@@ -179,6 +179,11 @@ module.exports = (Block) => {
       return decode(block.decode(), this.store, this.updater)
     }
 
+    async getValue (cid) {
+      const block = await this.store.get(cid)
+      return decode(block.decode(), this.store, this.updater)
+    }
+
     async has (key) {
       if (this.cache.has(key)) {
         if (this.cache.get(key).length === 1) return false
