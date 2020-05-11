@@ -95,12 +95,20 @@ module.exports = (Block) => {
       let root = this.root
       const ops = []
       const seen = new Set()
-      console.log({root, prev})
       while (!root.equals(prev)) {
-        const data = await this.getRootTransaction()
-        console.log({data})
-        throw new Error('here')
+        const data = await this.store.get(root).then(block => block.decodeUnsafe())
+        const _ops = await Promise.all(data['kv-v1'].ops.map(cid => this.store.get(cid)))
+        for (const op of _ops) {
+          const decode = op.decodeUnsafe()
+          const key = decode.set ? decode.set.key : decode.del.key
+          if (!seen.has(key)) {
+            ops.push(op)
+          }
+          seen.add(key)
+        }
+        root = data['kv-v1'].prev
       }
+      return ops
     }
 
     async __encode (block) {

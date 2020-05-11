@@ -28,7 +28,7 @@ module.exports = (Block, fromBlock, kv) => {
     prop.updated = true
     const root = await prop.rootData
     const kvdb = await prop.props.getKV()
-    const getBlock = prop.props.indexes.getBlock
+    const getBlock = prop.getBlock
     const hamtRoot = root.map
     const path = prop.name.split('/').filter(x => x)
 
@@ -62,6 +62,10 @@ module.exports = (Block, fromBlock, kv) => {
       // TODO: property encode value to handle links
       updates.push({ set: { key, val: value } })
     }
+    if (!updates.length) {
+      prop.newRootBlock = await getBlock(root.map)
+      return
+    }
     let last
     for await (const block of hamt.bulk(hamtRoot, updates, getBlock, Block)) {
       yield block
@@ -88,18 +92,23 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async update (ops) {
-      let root
+      let root = await this.root
+      const blocks = []
+      ops = ops.map(op => op.decodeUnsafe())
+      let prop = this
       if (this.newRootBlock) {
+        if (!ops.length) return this.newRootBlock.cid()
         root = await this.newRootBlock.cid()
-      } else {
-        const blocks = []
-        for await (const block of this.updateIndex(this, ops)) {
-          blocks.push(block)
-        }
-        await Promise.all(blocks.map(b => this.store.put(b)))
-        root = await blocks.pop().cid()
+        prop = new Prop(this.props, root, this.name)
       }
-      return root
+      for await (const block of prop.updateIndex(ops)) {
+        blocks.push(block)
+      }
+      if (!blocks.length) {
+        return root
+      }
+      await Promise.all(blocks.map(b => this.store.put(b)))
+      return blocks.pop().cid()
     }
   }
   Prop.create = (props, name) => {
@@ -218,7 +227,7 @@ module.exports = (Block, fromBlock, kv) => {
 
     async update (kvRoot) {
       const prev = await this.kvroot
-      const kvdb = kv(prev, this.store)
+      const kvdb = kv(kvRoot, this.store)
       const ops = await kvdb.since(prev)
 
       const _update = ([key, index]) => index.update(ops).then(root => [key, root])
