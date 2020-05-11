@@ -53,6 +53,12 @@ class Lazy {
   }
 }
 
+const chain = (child, parent) => {
+  Object.defineProperty(child, 'dirty', { get: () => parent.dirty })
+  readonly(child, 'store', parent.store)
+  readonly(child, 'getBlock', parent.getBlock || parent.store.get.bind(parent.store))
+}
+
 exports.Lazy = Lazy
 exports.NotFound = NotFound
 exports.readonly = readonly
@@ -60,3 +66,4 @@ exports.fromBlock = fromBlock
 exports.fromBlockUnsafe = fromBlockUnsafe
 exports.validate = validate
 exports.encoderTransaction = encoderTransaction
+exports.chain = chain

@@ -91,6 +91,18 @@ module.exports = (Block) => {
       return this.cache.size
     }
 
+    async since (prev) {
+      let root = this.root
+      const ops = []
+      const seen = new Set()
+      console.log({root, prev})
+      while (!root.equals(prev)) {
+        const data = await this.getRootTransaction()
+        console.log({data})
+        throw new Error('here')
+      }
+    }
+
     async __encode (block) {
       if (!isBlock(block)) {
         let last

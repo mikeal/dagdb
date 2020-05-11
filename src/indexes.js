@@ -1,4 +1,4 @@
-const { validate } = require('./utils')
+const { validate, chain } = require('./utils')
 const hamt = require('./hamt')
 
 // We need singletons on instances for things you can only get async.
@@ -68,21 +68,38 @@ module.exports = (Block, fromBlock, kv) => {
       last = block
     }
     root.map = await last.cid()
-    prop.newRootBlock = toBlock(root, 'PropIndex')
-    yield prop.newRootBlock
+    const newRootBlock = toBlock(root, 'PropIndex')
+    yield newRootBlock
+    prop.newRootBlock = newRootBlock
   }
 
   class Prop {
     constructor (props, root, name) {
-      this.root = root
-      lazyprop(this, 'rootBlock', () => this.root.then(cid => props.indexes.getBlock(cid)))
+      chain(this, props)
+      this.root = root.then ? root : new Promise(resolve => resolve(root))
+      lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
       this.name = name
       this.props = props
     }
 
-    update (ops) {
+    updateIndex (ops) {
       return updatePropIndex(this, ops)
+    }
+
+    async update (ops) {
+      let root
+      if (this.newRootBlock) {
+        root = await this.newRootBlock.cid()
+      } else {
+        const blocks = []
+        for await (const block of this.updateIndex(this, ops)) {
+          blocks.push(block)
+        }
+        await Promise.all(blocks.map(b => this.store.put(b)))
+        root = await blocks.pop().cid()
+      }
+      return root
     }
   }
   Prop.create = (props, name) => {
@@ -93,9 +110,10 @@ module.exports = (Block, fromBlock, kv) => {
 
   class Props {
     constructor (indexes) {
+      chain(this, indexes)
       this.indexes = indexes
       lazyprop(this, 'root', () => indexes.rootData.then(data => data.props))
-      lazyprop(this, 'rootBlock', () => this.root.then(cid => indexes.getBlock(cid)))
+      lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
       this.pending = new Map()
     }
@@ -114,6 +132,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async add (name) {
+      if (this.dirty) throw new Error('Cannot create new index with pending KV transactions, commit or update.')
       // TODO: check if already added and throw
       const prop = Prop.create(this, name)
       const kvdb = await this.getKV()
@@ -123,8 +142,8 @@ module.exports = (Block, fromBlock, kv) => {
       }
       const promises = []
       let last
-      for await (const block of prop.update(ops)) {
-        promises.push(this.indexes.db.store.put(block))
+      for await (const block of prop.updateIndex(ops)) {
+        promises.push(this.store.put(block))
         last = block
       }
       await Promise.all(promises)
@@ -140,6 +159,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async count (...props) {
+      if (this.dirty) throw new Error('Cannot query with pending KV transactions, commit or update.')
       let count = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
@@ -150,6 +170,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async sum (...props) {
+      if (this.dirty) throw new Error('Cannot query with pending KV transactions, commit or update.')
       let sum = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
@@ -158,25 +179,58 @@ module.exports = (Block, fromBlock, kv) => {
       }
       return sum
     }
+
+    async all () {
+      const data = await this.rootData
+      const keys = new Set(Object.keys(data))
+      const results = []
+      for (const [k, prop] of this.pending.entries()) {
+        keys.delete(k)
+        results.push([k, prop])
+      }
+      const promises = Array.from(keys.keys()).map(key => this.get(key).then(prop => [key, prop]))
+      return [...results, ... await Promise.all(promises) ]
+    }
+
+    async update (ops) {
+      const props = await this.all()
+      const _update = ([key, prop]) => prop.update(ops).then(cid => [key, cid])
+      const results = await Promise.all(props.map(_update))
+      const block = toBlock(Object.fromEntries(results), 'Props')
+      await this.store.put(block)
+      return block.cid()
+    }
   }
   class Indexes {
     constructor (db) {
+      chain(this, db)
       this.db = db
-      this.store = db.store
-      this.getBlock = db.store.get.bind(db.store)
+      lazyprop(this, 'kvroot', () => db.getRoot().then(root => root['db-v1'].kv))
       lazyprop(this, 'root', () => db.getRoot().then(root => root['db-v1'].indexes))
       lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
       lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
       this.props = new Props(this)
     }
 
+    all () {
+      return [['props', this.props]]
+    }
+
     async update (kvRoot) {
-      return kvRoot
+      const prev = await this.kvroot
+      const kvdb = kv(prev, this.store)
+      const ops = await kvdb.since(prev)
+
+      const _update = ([key, index]) => index.update(ops).then(root => [key, root])
+      const newIndexes = await Promise.all(this.all().map(_update))
+      const newRoot = toBlock(Object.fromEntries(newIndexes), 'Indexes')
+      await this.store.put(newRoot)
+      return newRoot.cid()
     }
   }
   const emptyMap = Block.encoder({}, 'dag-cbor')
   const emptyIndexes = emptyMap.cid().then(props => toBlock({ props }, 'Indexes'))
-  exports.empties = [emptyIndexes, emptyMap]
+  exports.empties = [emptyIndexes, emptyMap, emptyProp]
   exports.Indexes = Indexes
   return exports
 }

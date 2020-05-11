@@ -43,6 +43,10 @@ module.exports = (Block) => {
       return { v1: 'database' }
     }
 
+    get dirty () {
+      return kv.pending
+    }
+
     async commit () {
       let kv = await this._kv
       if (kv.pending) {
