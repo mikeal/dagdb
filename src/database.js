@@ -81,6 +81,11 @@ module.exports = (Block) => {
       return kv.set(...args)
     }
 
+    async del (...args) {
+      const kv = await this._kv
+      return kv.del(...args)
+    }
+
     async link (...args) {
       const kv = await this._kv
       return kv.link(...args)

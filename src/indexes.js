@@ -41,26 +41,38 @@ module.exports = (Block, fromBlock, kv) => {
 
     const updates = []
     for (const op of ops) {
-      if (!op.set) continue
-      const { key, val } = op.set
-      let value = await kvdb.getValue(val)
-      const lookup = [...path]
-      while (lookup.length && typeof value[lookup[0]] !== 'undefined') {
-        value = value[lookup.shift()]
-        if (typeof value === 'function') value = await value()
-      }
-      if (lookup.length) {
-        if (keys.has(key)) {
-          updates.push({ del: { key } })
+      const _del = async key => {
+        // lookup prior resolved value for this key
+        const value = await hamt.get(hamtRoot, key, getBlock)
+        if (typeof value === 'undefined') return // not in index
+        if (typeof value === 'number') {
+          root.sum -= value
         }
-        continue
+        updates.push({ del: { key } }) // remove it from the index
       }
-      root.count += 1
-      if (typeof value === 'number') {
-        root.sum += value
+      if (op.set) {
+        const { key, val } = op.set
+        let value = await kvdb.getValue(val)
+        const lookup = [...path]
+        while (lookup.length && typeof value[lookup[0]] !== 'undefined') {
+          value = value[lookup.shift()]
+          if (typeof value === 'function') value = await value()
+        }
+        if (lookup.length) {
+          if (keys.has(key)) {
+            await _del(key)
+          }
+          continue
+        }
+        root.count += 1
+        if (typeof value === 'number') {
+          root.sum += value
+        }
+        // TODO: property encode value to handle links
+        updates.push({ set: { key, val: value } })
+      } else {
+        await _del(op.del.key)
       }
-      // TODO: property encode value to handle links
-      updates.push({ set: { key, val: value } })
     }
     if (!updates.length) {
       prop.newRootBlock = await getBlock(root.map)
@@ -130,7 +142,7 @@ module.exports = (Block, fromBlock, kv) => {
     async _get (name) {
       const root = await this.rootData
       if (!root[name]) throw new Error(`No property index for "${name}"`)
-      return new Prop(this, root[name])
+      return new Prop(this, root[name], name)
     }
 
     async getKV () {
@@ -160,9 +172,9 @@ module.exports = (Block, fromBlock, kv) => {
       this.pending.set(name, prop)
     }
 
-    get (name) {
+    async get (name) {
       if (!this.pending.has(name)) {
-        this.pending.set(name, this._get(name))
+        this.pending.set(name, await this._get(name))
       }
       return this.pending.get(name)
     }
@@ -198,12 +210,12 @@ module.exports = (Block, fromBlock, kv) => {
         results.push([k, prop])
       }
       const promises = Array.from(keys.keys()).map(key => this.get(key).then(prop => [key, prop]))
-      return [...results, ... await Promise.all(promises) ]
+      return [...results, ...await Promise.all(promises)]
     }
 
     async update (ops) {
       const props = await this.all()
-      const _update = ([key, prop]) => prop.update(ops).then(cid => [key, cid])
+      const _update = async ([key, prop]) => prop.update(ops).then(cid => [key, cid])
       const results = await Promise.all(props.map(_update))
       const block = toBlock(Object.fromEntries(results), 'Props')
       await this.store.put(block)
