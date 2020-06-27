@@ -24,6 +24,7 @@ module.exports = (Block, fromBlock, kv) => {
   const exports = {}
 
   const updatePropIndex = async function * (prop, ops) {
+    // istanbul ignore next // dev-only guard
     if (prop.updated) throw new Error('Index has already been updated')
     prop.updated = true
     const root = await prop.rootData
@@ -89,6 +90,12 @@ module.exports = (Block, fromBlock, kv) => {
     prop.newRootBlock = newRootBlock
   }
 
+  const propEntries = async function * (prop) {
+    const root = await prop.rootData
+    const hamtRoot = root.map
+    yield * hamt.all(hamtRoot, prop.getBlock)
+  }
+
   class Prop {
     constructor (props, root, name) {
       chain(this, props)
@@ -122,11 +129,65 @@ module.exports = (Block, fromBlock, kv) => {
       await Promise.all(blocks.map(b => this.store.put(b)))
       return blocks.pop().cid()
     }
+
+    entries () {
+      return propEntries(this)
+    }
   }
   Prop.create = (props, name) => {
     const prop = new Prop(props, emptyProp.then(block => block.cid()), name)
     prop._rootData = emptyProp.then(block => block.decode())
     return prop
+  }
+
+  const entries = async function * (props, names) {
+    let opts = { uniqueKeys: false, uniqueSources: false }
+    if (typeof names[names.length - 1] === 'object') {
+      opts = { ...opts, ...names.pop() }
+    }
+    const indexes = names.map(name => props.get(name))
+    let seenSources
+    if (opts.uniqueSources) {
+      seenSources = new Set()
+    }
+    let seenKeys
+    if (opts.uniqueKeys) {
+      seenKeys = new Set()
+    }
+    for (const p of indexes) {
+      const index = await p
+      const prop = index.name
+      for await (let { key, value } of index.entries()) {
+        key = key.toString()
+        let kv
+        let link
+        if (opts.uniqueSources) {
+          kv = await index.props.getKV()
+          link = await kv.getRef(key)
+          const ck = link.toString()
+          if (seenSources.has(ck)) continue
+          seenSources.add(ck)
+        }
+        if (opts.uniqueKeys) {
+          if (seenKeys.has(key)) continue
+          seenKeys.add(key)
+        }
+        const source = async () => {
+          if (!kv) kv = await index.props.getKV()
+          if (!link) link = await kv.getRef(key)
+          return kv.getValue(link)
+        }
+        yield { key, prop, value, source }
+      }
+    }
+  }
+  const pluck = async function * (props, names, attr) {
+    for await (const entry of entries(props, names)) {
+      let val = entry[attr]
+      // async source functions
+      if (typeof val === 'function') val = val()
+      yield val
+    }
   }
 
   class Props {
@@ -177,6 +238,18 @@ module.exports = (Block, fromBlock, kv) => {
         this.pending.set(name, await this._get(name))
       }
       return this.pending.get(name)
+    }
+
+    entries (...names) {
+      return entries(this, names)
+    }
+
+    values (...names) {
+      return pluck(this, names, 'value')
+    }
+
+    sources (...names) {
+      return pluck(this, names, 'source')
     }
 
     async count (...props) {

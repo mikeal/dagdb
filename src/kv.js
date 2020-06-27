@@ -199,6 +199,15 @@ module.exports = (Block) => {
       return decode(block.decode(), this.store, this.updater)
     }
 
+    async getRef (key) {
+      const block = await this.__get(key)
+      if (block) return block.cid()
+      const head = await this.getHead()
+      const link = await hamt.get(head, key, this.store.get.bind(this.store))
+      if (!link) throw new NotFound(`No key named "${key}"`)
+      return link
+    }
+
     async getValue (cid) {
       const block = await this.store.get(cid)
       return decode(block.decode(), this.store, this.updater)
