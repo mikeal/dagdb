@@ -83,20 +83,32 @@ describe('test-indexes', () => {
     same(await count(db, 'one'), 1)
     same(await sum(db, 'one'), 1)
     await db.set('test3', { one: 1 })
+    await db.set('test4', { one: 'one' })
     db = await db.update()
 
-    same(await count(db, 'one'), 2)
+    same(await count(db, 'one'), 3)
     same(await count(db, 'two'), 2)
     same(await sum(db, 'one'), 2)
     same(await sum(db, 'two'), 4)
   })
+  test('non-object values', async () => {
+    let db = await load()
+    await db.set('string', 'test')
+    // disabled, dag-cbor or block bug is blocking
+    // await db.set('null', null)
+    await db.set('true', true)
+    await db.set('zoro', 0)
+    db = await db.update()
+  })
   test('remove index', async () => {
     let db = await load()
     await db.set('test3', { two: 3 })
+    await db.set('test4', { two: 'two' })
     db = await db.update()
     same(await sum(db, 'two'), 7)
-    same(await count(db, 'two'), 3)
+    same(await count(db, 'two'), 4)
     await db.del('test3')
+    await db.del('test4')
     db = await db.update()
     same(await sum(db, 'two'), 4)
     same(await count(db, 'two'), 2)
@@ -165,6 +177,72 @@ describe('test-indexes', () => {
     ]
     for await (const source of gen) {
       same(source, sources.shift())
+    }
+  })
+  test('traverse link', async () => {
+    let db = await load()
+    const link = await db.link({ four: 4 })
+    await db.set('withLink', { three: link })
+
+    db = await db.update()
+    const three = [
+      {
+        key: 'withLink',
+        prop: 'three/four',
+        value: 4
+      },
+      {
+        key: 'test2',
+        prop: 'three/four',
+        value: 4
+      }
+    ]
+    await sameEntries(db, 'three/four', three)
+  })
+
+  test('errors', async () => {
+    const db = await load()
+    let threw = true
+    try {
+      await db.indexes.props.get('nope')
+      threw = false
+    } catch (e) {
+      if (e.message !== 'No property index for "nope"') throw e
+    }
+    same(threw, true)
+    await db.set('another', 'test')
+    same(await db.dirty, 1)
+    same(await db.indexes.dirty, 1)
+    same(await db.indexes.props.dirty, 1)
+
+    const message = 'Cannot create new index with pending KV transactions, commit or update.'
+    let methods = [
+      'count',
+      'sum'
+    ]
+    for (const method of methods) {
+      try {
+        await db.indexes.props[method]()
+        threw = false
+      } catch (e) {
+        if (e.message !== message) throw e
+      }
+      same(threw, true)
+    }
+    methods = [
+      'sources',
+      'values',
+      'entries'
+    ]
+    for (const method of methods) {
+      try {
+        for await (const b of db.indexes.props[method]()) {
+        }
+        threw = false
+      } catch (e) {
+        if (e.message !== message) throw e
+      }
+      same(threw, true)
     }
   })
 })

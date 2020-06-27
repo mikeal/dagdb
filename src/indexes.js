@@ -141,6 +141,7 @@ module.exports = (Block, fromBlock, kv) => {
   }
 
   const entries = async function * (props, names) {
+    await checkDirty(props)
     let opts = { uniqueKeys: false, uniqueSources: false }
     if (typeof names[names.length - 1] === 'object') {
       opts = { ...opts, ...names.pop() }
@@ -190,6 +191,12 @@ module.exports = (Block, fromBlock, kv) => {
     }
   }
 
+  const checkDirty = async props => {
+    if (await props.dirty) {
+      throw new Error('Cannot create new index with pending KV transactions, commit or update.')
+    }
+  }
+
   class Props {
     constructor (indexes) {
       chain(this, indexes)
@@ -214,7 +221,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async add (name) {
-      if (this.dirty) throw new Error('Cannot create new index with pending KV transactions, commit or update.')
+      await checkDirty(this)
       // TODO: check if already added and throw
       const prop = Prop.create(this, name)
       const kvdb = await this.getKV()
@@ -253,7 +260,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async count (...props) {
-      if (this.dirty) throw new Error('Cannot query with pending KV transactions, commit or update.')
+      await checkDirty(this)
       let count = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
@@ -264,7 +271,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async sum (...props) {
-      if (this.dirty) throw new Error('Cannot query with pending KV transactions, commit or update.')
+      await checkDirty(this)
       let sum = 0
       const indexes = await Promise.all(props.map(name => this.get(name)))
       for (const index of indexes) {
@@ -274,7 +281,7 @@ module.exports = (Block, fromBlock, kv) => {
       return sum
     }
 
-    async all () {
+    async _all () {
       const data = await this.rootData
       const keys = new Set(Object.keys(data))
       const results = []
@@ -287,7 +294,7 @@ module.exports = (Block, fromBlock, kv) => {
     }
 
     async update (ops) {
-      const props = await this.all()
+      const props = await this._all()
       const _update = async ([key, prop]) => prop.update(ops).then(cid => [key, cid])
       const results = await Promise.all(props.map(_update))
       const block = toBlock(Object.fromEntries(results), 'Props')

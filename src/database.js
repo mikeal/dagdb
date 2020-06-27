@@ -44,7 +44,7 @@ module.exports = (Block) => {
     }
 
     get dirty () {
-      return kv.pending
+      return this._kv.then(kv => kv.pending)
     }
 
     async commit () {

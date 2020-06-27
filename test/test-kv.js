@@ -151,4 +151,19 @@ describe('test-kv', () => {
     const obj = await db.get('test2')
     assert.ok(obj.two.cid.equals(link.cid))
   })
+
+  test('getRef', async () => {
+    let db = await basics()
+    const link = await db.getRef('test')
+    await db.set('copy', await db.get('test'))
+    same(link, await db.getRef('copy') /* pending */)
+    let threw = true
+    try {
+      await db.getRef('nope')
+      threw = false
+    } catch (e) {
+      if (e.message !== 'No key named "nope"') throw e
+    }
+    same(threw, true)
+  })
 })
