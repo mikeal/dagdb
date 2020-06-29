@@ -153,7 +153,7 @@ describe('test-kv', () => {
   })
 
   test('getRef', async () => {
-    let db = await basics()
+    const db = await basics()
     const link = await db.getRef('test')
     await db.set('copy', await db.get('test'))
     same(link, await db.getRef('copy') /* pending */)
@@ -165,5 +165,22 @@ describe('test-kv', () => {
       if (e.message !== 'No key named "nope"') throw e
     }
     same(threw, true)
+  })
+
+  test('since', async () => {
+    let db = await basics()
+    const db1 = kv(db.root, db.store)
+    await db.set('changed', { hello: 'world' })
+    db = await db.commit()
+    await db.set('changed', { hello: 'world', pass: true })
+    db = await db.commit()
+    const since = await db.since(db1.root)
+    same(since.length, 1)
+    const [block] = since
+    let decoded = block.decodeUnsafe()
+    same(decoded.set.key, 'changed')
+    const value = await db.store.get(decoded.set.val)
+    decoded = value.decodeUnsafe()
+    same(decoded, { hello: 'world', pass: true })
   })
 })

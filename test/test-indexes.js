@@ -234,9 +234,11 @@ describe('test-indexes', () => {
       'values',
       'entries'
     ]
+    const noop = () => {}
     for (const method of methods) {
       try {
         for await (const b of db.indexes.props[method]()) {
+          noop(b)
         }
         threw = false
       } catch (e) {
