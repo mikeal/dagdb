@@ -1,4 +1,4 @@
-const { blockstore, info, updater } = require('./handlers')
+import { blockstore, info, updater } from './handlers.js'
 
 const getBody = stream => new Promise((resolve, reject) => {
   const buffers = []
@@ -50,13 +50,13 @@ const createHandler = (Block, store, _updater, infoOpts = {}) => {
   return _handler
 }
 
-module.exports = createHandler
-
-module.exports.blockstore = (...args) => {
+createHandler.blockstore = (...args) => {
   const _handler = blockstore(...args)
   return (req, res) => handler(req, res, _handler)
 }
-module.exports.updater = (...args) => {
+createHandler.updater = (...args) => {
   const _handler = updater(...args)
   return (req, res) => handler(req, res, _handler)
 }
+
+export default createHandler

@@ -1,8 +1,9 @@
-const { readonly, isCID, validate } = require('./utils')
-const createFBL = require('@ipld/fbl/bare')
+import { readonly, isCID, validate } from './utils.js'
+import createFBL from '@ipld/fbl/bare.js'
+
 const types = {}
 
-module.exports = (Block) => {
+export default (Block) => {
   const fbl = createFBL(Block, 'dag-cbor')
 
   const fblDecoder = (root, store) => {

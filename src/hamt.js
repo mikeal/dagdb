@@ -1,7 +1,9 @@
-const iamap = require('iamap')
-const { isCID } = require('./utils')
-const assert = require('assert')
-const murmurhash3 = require('murmurhash3js-revisited')
+import iamap from 'iamap'
+import assert from 'assert'
+import murmurhash3 from 'murmurhash3js-revisited')
+
+const isCID = node => !!(node && node[cidSymbol])
+
 function murmurHasher (key) {
   assert(Buffer.isBuffer(key))
   const b = Buffer.alloc(4)
@@ -71,11 +73,8 @@ const all = (root, get) => {
   }
   return iter()
 }
+const bulk = transaction
+const _store = store
+const _noop = noop
 
-module.exports.all = all
-module.exports.bulk = transaction
-module.exports.empty = empty
-module.exports.get = get
-module.exports._store = store
-module.exports._noop = noop
-module.exports.has = has
+export { all, bulk, empty, get, _store, _noop, has }

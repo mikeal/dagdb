@@ -1,10 +1,11 @@
-const hamt = require('./hamt')
-const {
+import hamt = './hamt.js'
+import {
   NotFound, readonly, isCID,
   fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
-} = require('./utils')
-const valueLoader = require('./values')
+} from './utils.js'
+import valueLoad from './values.js'
+
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
 const createGet = (local, remote) => {
@@ -34,7 +35,7 @@ const createGet = (local, remote) => {
   return get
 }
 
-module.exports = (Block) => {
+const create = (Block) => {
   const { encode, decode, register } = valueLoader(Block)
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
 
@@ -431,4 +432,6 @@ module.exports = (Block) => {
   exports.register = register
   return exports
 }
-module.exports.createGet = createGet
+
+create.createGet = createGet
+export default create

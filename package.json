@@ -3,6 +3,7 @@
   "version": "0.0.0-dev",
   "description": "Syncable large scale database built on IPLD",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "docs:dev": "vuepress dev docs",
     "docs:build": "vuepress build docs",
@@ -31,12 +32,12 @@
     "./src/native/index.js": "./src/native/browser.js"
   },
   "dependencies": {
-    "@ipld/block": "^4.0.2",
-    "@ipld/fbl": "0.0.3",
-    "@ipld/schema-validation": "0.0.0",
-    "bent": "^7.3.0",
+    "@ipld/block": "^5.1.1",
+    "@ipld/fbl": "1.0.1",
+    "@ipld/schema-validation": "1.0.1",
+    "bent": "^7.3.7",
     "charwise": "^3.0.1",
-    "datastore-car": "^1.1.4",
+    "datastore-car": "^1.2.0",
     "encoding-down": "^6.3.0",
     "iamap": "^0.7.0",
     "level-js": "^5.0.2",
@@ -45,15 +46,15 @@
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {
-    "aws-config": "^1.3.2",
-    "aws-sdk": "^2.668.0",
-    "hundreds": "0.0.2",
+    "aws-config": "^1.4.0",
+    "aws-sdk": "^2.707.0",
+    "hundreds": "0.0.7",
     "ipld-schema": "^0.3.2",
     "memdown": "^5.1.0",
-    "mocha": "^7.1.2",
+    "mocha": "^8.0.1",
     "polendina": "^1.0.0",
-    "standard": "^14.3.3",
+    "standard": "^14.3.4",
     "tap": "^14.10.7",
-    "vuepress": "^1.4.1"
+    "vuepress": "^1.5.2"
   }
 }

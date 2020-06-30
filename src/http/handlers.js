@@ -1,9 +1,9 @@
-const CID = require('cids')
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
 
-exports.blockstore = (Block, store) => {
+const blockstore = (Block, store) => {
+  const { CID } = Block
   const handler = async opts => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
@@ -67,7 +67,7 @@ exports.blockstore = (Block, store) => {
   return handler
 }
 
-exports.info = (store, updater, ext) => async opts => {
+const info = (store, updater, ext) => async opts => {
   const root = await updater.root
   const info = {
     root: root ? root.toString('base32') : root,
@@ -78,7 +78,7 @@ exports.info = (store, updater, ext) => async opts => {
   return { headers: jsonHeaders(body), body }
 }
 
-exports.updater = updater => async opts => {
+const updater = updater => async opts => {
   if (!opts.params.new) throw new Error('Missing required param "new"')
   opts.params.new = new CID(opts.params.new)
   if (opts.params.old) opts.params.old = new CID(opts.params.old)
@@ -86,3 +86,4 @@ exports.updater = updater => async opts => {
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
   return { headers: jsonHeaders(body), body }
 }
+export { blockstore, info, updater }

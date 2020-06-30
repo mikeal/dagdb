@@ -1,9 +1,10 @@
+import hamt from './hamt.js'
+import schema from './schema.json'
+import createValidate from '@ipld/schema-validation'
+
 const isCID = node => !!(node && node[cidSymbol])
-exports.isCID = isCID
-// must export before importing hamt due to circular reference
-const hamt = require('./hamt')
-const schema = require('./schema.json')
-const validate = require('@ipld/schema-validation')(schema)
+const validate = createValidate(schema)
+
 const fromBlock = (block, className) => validate(block.decode(), className)
 const fromBlockUnsafe = (block, className) => validate(block.decodeUnsafe(), className)
 
@@ -59,11 +60,4 @@ const chain = (child, parent) => {
   readonly(child, 'getBlock', parent.getBlock || parent.store.get.bind(parent.store))
 }
 
-exports.Lazy = Lazy
-exports.NotFound = NotFound
-exports.readonly = readonly
-exports.fromBlock = fromBlock
-exports.fromBlockUnsafe = fromBlockUnsafe
-exports.validate = validate
-exports.encoderTransaction = encoderTransaction
-exports.chain = chain
+export { Lazy, NotFound, readonly, fromBlock, fromBlockUnsafe, validate, encoderTransaction, chain }

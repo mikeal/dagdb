@@ -1,7 +1,7 @@
-const bent = require('bent')
-const LRUStore = require('./lru')
+import bent from 'bent'
+import LRUStore from './lru.js'
 
-module.exports = Block => {
+export default Block => {
   class HttpsStore extends LRUStore {
     constructor (baseurl, opts) {
       super(opts)

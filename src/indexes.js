@@ -1,5 +1,5 @@
-const { validate, chain } = require('./utils')
-const hamt = require('./hamt')
+import { validate, chain } from './utils.js'
+import hamt from ./hamt.js
 
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only

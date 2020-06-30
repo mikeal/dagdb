@@ -1,10 +1,11 @@
-const { Lazy } = require('./utils')
-const hamt = require('./hamt')
-const bent = require('bent')
-const getJSON = bent('json')
-const replicate = require('./stores/replicate')
+import { Lazy } from './utils.js'
+import hamt from './hamt.js'
+import bent from 'bent'
+import replicate from './stores/replicate.js'
 
-module.exports = (Block, stores, toBlock, updaters, CID) => {
+const getJSON = bent('json')
+
+export default (Block, stores, toBlock, updaters, CID) => {
   const exports = {}
 
   class Remote {

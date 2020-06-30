@@ -1,2 +1,3 @@
-const Block = require('@ipld/block')
-module.exports = require('./bare')(Block)
+import Block from '@ipld/block/defaults.js'
+import bare from './bare.js'
+export default bare(Block)
