@@ -157,113 +157,42 @@
         }
       }
     },
-    "Paths": {
-      "kind": "list",
-      "valueType": "String"
-    },
-    "Reduces": {
-      "kind": "list",
-      "valueType": "String"
-    },
-    "MapFunction": {
-      "kind": "string"
-    },
-    "UnorderedKeyedIndexTransform": {
-      "kind": "union",
-      "representation": {
-        "kinded": {
-          "list": "Paths",
-          "string": "MapFunction"
-        }
-      }
-    },
-    "UnorderedKeyedIndexValue": {
+    "PropIndex": {
       "kind": "struct",
       "fields": {
-        "values": {
+        "count": {
+          "type": "int"
+        },
+        "sum": {
+          "type": "int"
+        },
+        "map": {
           "type": {
             "kind": "link",
             "expectedType": "HashMapRoot"
           }
-        },
-        "reduced": {
-          "type": "map",
-          "optional": true
-        }
-      },
-      "representation": {
-        "tuple": {}
-      }
-    },
-    "UnorderedIndexOperation": {
-      "kind": "struct",
-      "fields": {
-        "op": {
-          "type": {
-            "kind": "link",
-            "expectedType": "SetOperation"
-          }
-        },
-        "transform": {
-          "type": {
-            "kind": "link",
-            "expectedType": "UnorderedKeyedIndexTransform"
-          }
-        },
-        "value": {
-          "type": "Link"
-        },
-        "reduces": {
-          "type": "Reduces",
-          "optional": true
         }
       },
       "representation": {
         "map": {}
       }
     },
-    "IndexUnion": {
-      "kind": "union",
-      "representation": {
-        "keyed": {
-          "uki": {
-            "kind": "link",
-            "expectedType": "HashMapRoot"
-          }
-        }
+    "Props": {
+      "kind": "map",
+      "keyType": "String",
+      "valueType": {
+        "kind": "link",
+        "expectedType": "PropIndex"
       }
     },
-    "IndexInfoUnion": {
-      "kind": "union",
-      "representation": {
-        "keyed": {
-          "uki": {
-            "kind": "link",
-            "expectedType": "UnorderedKeyedIndexInfo"
-          }
-        }
-      }
-    },
-    "Index": {
+    "Indexes": {
       "kind": "struct",
       "fields": {
-        "head": {
+        "props": {
           "type": {
             "kind": "link",
-            "expectedType": "HashMapRoot"
+            "expectedType": "Props"
           }
-        },
-        "rmap": {
-          "type": {
-            "kind": "link",
-            "expectedType": "HashMapRoot"
-          }
-        },
-        "index": {
-          "type": "IndexUnion"
-        },
-        "info": {
-          "type": "IndexInfoUnion"
         }
       },
       "representation": {
@@ -381,7 +310,7 @@
         "indexes": {
           "type": {
             "kind": "link",
-            "expectedType": "HashMapRoot"
+            "expectedType": "Indexes"
           }
         },
         "remotes": {

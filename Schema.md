@@ -68,49 +68,19 @@ type Transaction union {
   | TransactionV1 "kv-v1"
 } representation keyed
 ```
-# Index
+# Indexes
 
 ```sh
-type Paths [String]
-type Reduces [String]
-type MapFunction string
-
-type UnorderedKeyedIndexTransform union {
-  | Paths list
-  | MapFunction string
-} representation kinded
-
-type UnorderedKeyedIndexValue struct {
-  values &HashMapRoot
-  reduced optional map
-} representation tuple
-
-type UnorderedIndexOperation struct {
-  op &SetOperation
-  transform &UnorderedKeyedIndexTransform
-  value Link
-  reduces optional Reduces
+type PropIndex struct {
+  count int
+  sum int
+  map &HashMapRoot # map of { DBKey: PropValue }
 }
-type IndexUnion union {
-  | &HashMapRoot "uki"
-} representation keyed
-
-type IndexInfoUnion union {
-  | &UnorderedKeyedIndexInfo "uki"
-} representation keyed
-
-type Index struct {
-  head &HashMapRoot # local KV root
-  rmap &HashMapRoot # map of KV entries to indexes transactions
-  index IndexUnion
-  info IndexInfoUnion
+type Props { String: &PropIndex }
+type Indexes struct {
+  props &Props
 }
 ```
-
-`rmap` is a HAMT that maps the primary key data to the resolved secondary
-index. This way, if the value for the secondary index is modified or the
-value removed from the primary store the index can be updated to reflect
-the new state.
 
 # DagDB Type
 
@@ -180,7 +150,7 @@ to the device/store. Tags typically **are** pushed to a remote.
 ```sh
 type DatabaseV1 struct {
   kv &Transaction
-  indexes &HashMapRoot # Values type is Index
+  indexes &Indexes # Values type is Index
   remotes &HashMapRoot # Values type is Remote
 }
 

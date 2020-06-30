@@ -74,6 +74,14 @@ module.exports = (Block) => {
     // yield is NOT a Block. This is so that the final
     // root of each each node can be embedded in a parent.
     // This contract MUST be adhered to by all special types.
+
+    /* disabled because of null handling bugs in dag-cbor
+     * can be enabled when we take a newer version of Block and dag-cbor
+    if (value === null) {
+      yield value
+      return
+    }
+    */
     if (typeof value === 'object' && typeof value.then === 'function') value = await value
     if (isCID(value)) {
       yield value

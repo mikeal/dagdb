@@ -91,6 +91,26 @@ module.exports = (Block) => {
       return this.cache.size
     }
 
+    async since (prev) {
+      let root = this.root
+      const ops = []
+      const seen = new Set()
+      while (!root.equals(prev)) {
+        const data = await this.store.get(root).then(block => block.decodeUnsafe())
+        const _ops = await Promise.all(data['kv-v1'].ops.map(cid => this.store.get(cid)))
+        for (const op of _ops) {
+          const decode = op.decodeUnsafe()
+          const key = decode.set ? decode.set.key : decode.del.key
+          if (!seen.has(key)) {
+            ops.push(op)
+          }
+          seen.add(key)
+        }
+        root = data['kv-v1'].prev
+      }
+      return ops
+    }
+
     async __encode (block) {
       if (!isBlock(block)) {
         let last
@@ -176,6 +196,20 @@ module.exports = (Block) => {
 
     async get (key) {
       const block = await this.getBlock(key)
+      return decode(block.decode(), this.store, this.updater)
+    }
+
+    async getRef (key) {
+      const block = await this.__get(key)
+      if (block) return block.cid()
+      const head = await this.getHead()
+      const link = await hamt.get(head, key, this.store.get.bind(this.store))
+      if (!link) throw new NotFound(`No key named "${key}"`)
+      return link
+    }
+
+    async getValue (cid) {
+      const block = await this.store.get(cid)
       return decode(block.decode(), this.store, this.updater)
     }
 
