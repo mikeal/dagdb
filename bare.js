@@ -1,1 +1,2 @@
-module.exports = require('./src/bare')
+import bare from './src/bare.js'
+export default bare

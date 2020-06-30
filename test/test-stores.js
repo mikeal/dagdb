@@ -1,10 +1,12 @@
 /* globals describe, it, before, after */
-const { fixtures, graphTests, replicateTests, basics } = require('./lib/storage')
-const Block = require('@ipld/block')
-const LRUStore = require('../src/stores/lru')
-const assert = require('assert')
+import { fixtures, graphTests, replicateTests, basics } from './lib/storage.js'
+import Block from '@ipld/block/defaults.js'
+import LRUStore from '../src/stores/lru.js'
+import createInmemory from '../src/stores/inmemory.js'
+import assert from 'assert'
+
 const same = assert.deepStrictEqual
-const inmem = require('../src/stores/inmemory')
+const inmem = createInmemory(Block)
 const test = it
 
 const b = obj => Block.encoder(obj, 'dag-cbor')

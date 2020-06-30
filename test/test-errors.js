@@ -1,11 +1,14 @@
 /* globals it, describe, before, after */
-const Block = require('@ipld/block')
-const inmem = require('../src/stores/inmemory')
-const kv = require('../src/kv')(Block)
+import Block from '@ipld/block/defaults.js'
+import createInmemory from '../src/stores/inmemory'
+import createKV from '../src/kv.js'
+import assert from 'assert'
+import bent from 'bent'
+
+const inmem = createInmemory(Block)
+const kv = createKV(Block)
 const test = it
-const assert = require('assert')
 const same = assert.deepStrictEqual
-const bent = require('bent')
 
 const create = async (_kv = kv) => {
   const store = inmem()

@@ -1,6 +1,6 @@
-const createKVStore = require('./kv')
-const { Buffer } = require('buffer')
-const empty = Buffer.from('')
+import createKVStore './kv.js'
+
+const empty = new Uint8Array(0)
 
 const ls = async function * (s3, opts) {
   opts = { ...opts }
@@ -17,7 +17,7 @@ const ls = async function * (s3, opts) {
   } while (data.Contents.length)
 }
 
-module.exports = Block => {
+export default Block => {
   const KVStore = createKVStore(Block)
   class S3Store extends KVStore {
     constructor (s3, opts = {}, ...args) {

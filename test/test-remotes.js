@@ -1,14 +1,18 @@
 /* globals describe, it */
-const Block = require('@ipld/block')
-const CID = require('cids')
-const bent = require('bent')
-const inmem = require('../src/stores/inmemory')
-const replicate = require('../src/stores/replicate')
-const createUpdater = require('../src/updaters/kv')
-const database = require('../src/database')(Block)
-const createKV = require('./lib/mock-kv')
+import Block from '@ipld/block/defaults.js'
+import bent from 'bent'
+import createInmemory from '../src/stores/inmemory.js'
+import assert from 'assert'
+import createReplicate from '../src/stores/replicate.js'
+import createUpdater from '../src/updaters/kv.js'
+import createDatabase from '../src/database.js'
+import createKV from './lib/mock-kv.js'
+
+const database = createDatabase(Block)
 const test = it
-const assert = require('assert')
+const replicate = createReplicate(Block)
+const inmem = createInmemory(Block)
+const { CID } = Block
 const same = assert.deepStrictEqual
 const ok = assert.ok
 

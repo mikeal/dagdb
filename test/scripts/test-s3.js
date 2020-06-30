@@ -1,10 +1,12 @@
 /* globals describe, it */
 // DAGDB_TEST_BUCKET=dagdb-test mocha test/scripts/test-s3.js -b --timeout=5000
-const { graphTests, replicateTests, basics } = require('../lib/storage')
-const Block = require('@ipld/block')
-const createStore = require('../../src/store/s3')(Block)
-const { S3 } = require('aws-sdk')
-const awsConfig = require('aws-config')
+import { graphTests, replicateTests, basics } from '../lib/storage.js'
+import Block from '@ipld/block/defaults.js'
+
+import createS3Store from '../../src/store/s3.js'
+import createStore = createS3Store(Block)
+import { S3 } from 'aws-sdk'
+import awsConfig from 'aws-config'
 
 const test = it
 

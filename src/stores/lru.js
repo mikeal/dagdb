@@ -1,4 +1,4 @@
-const LRU = require('lru-cache')
+import LRU from 'lru-cache'
 
 const defaultSize = 1024 * 1024 * 50
 const getLength = block => block.encodeUnsafe().length
@@ -38,4 +38,4 @@ class LRUStore {
   }
 }
 
-module.exports = LRUStore
+export default LRUStore

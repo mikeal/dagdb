@@ -1,10 +1,11 @@
 import iamap from 'iamap'
 import assert from 'assert'
-import murmurhash3 from 'murmurhash3js-revisited')
+import murmurhash3 from 'murmurhash3js-revisited'
 
 const isCID = node => !!(node && node[cidSymbol])
 
 function murmurHasher (key) {
+  // TODO: get rid of Buffer
   assert(Buffer.isBuffer(key))
   const b = Buffer.alloc(4)
   b.writeUInt32LE(murmurhash3.x86.hash32(key))

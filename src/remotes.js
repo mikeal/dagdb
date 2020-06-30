@@ -1,11 +1,12 @@
 import { Lazy } from './utils.js'
 import hamt from './hamt.js'
 import bent from 'bent'
-import replicate from './stores/replicate.js'
+import createReplicate from './stores/replicate.js'
 
 const getJSON = bent('json')
 
 export default (Block, stores, toBlock, updaters, CID) => {
+  const replicate = createReplicate(Block)
   const exports = {}
 
   class Remote {

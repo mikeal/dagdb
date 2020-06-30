@@ -1,13 +1,16 @@
 /* globals it, describe, before, after */
-const Block = require('@ipld/block')
-const inmem = require('../src/stores/inmemory')
-const createUpdater = require('../src/updaters/kv')
-const database = require('../src/database')(Block)
-const createKV = require('./lib/mock-kv')
+import Block from '@ipld/block/defaults.js'
+import createInmemory from '../src/stores/inmemory.js'
+import createUpdater from '../src/updaters/kv.js'
+import createDatabaseInterface = '../src/database.js'
+import createKV from './lib/mock-kv.js'
+import assert from 'assert'
+
+const database = createDatabaseInterface(Block)
 const test = it
-const assert = require('assert')
 const same = assert.deepStrictEqual
-const CID = require('cids')
+const inmem = createInmemory(Block)
+const { CID } = Block
 
 const create = async () => {
   const store = inmem()

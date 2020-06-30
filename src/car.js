@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs'
 import carfile from 'datastore-car'
-import inmem from './stores/inmemory.js'
+import createInmemory from './stores/inmemory.js'
 import Block from '@ipld/block/defaults.js'
 import mkdatabase from './database.js'
 import path from 'path'
@@ -64,6 +64,7 @@ const traverse = async function * (cid, get, seen = new Set()) {
 const readwrite = async (filename, exportFile) => {
   await checkfile(filename)
   const reader = await loadReadOnly(filename)
+  const inmem = createInmemory(Block)
   const cache = inmem()
   const put = cache.put.bind(cache)
   const get = async cid => {
