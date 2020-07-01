@@ -48,4 +48,4 @@ class MockS3 {
   }
 }
 
-module.exports = (...args) => new MockS3(...args)
+export default (...args) => new MockS3(...args)

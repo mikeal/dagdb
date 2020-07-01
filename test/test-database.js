@@ -167,12 +167,6 @@ describe('test-database', () => {
         port = getPort()
         server = httpModule.createServer(handler)
         closed = new Promise(resolve => server.once('close', resolve))
-        before(() => new Promise((resolve, reject) => {
-          server.listen(port, e => {
-            if (e) return reject(e)
-            resolve()
-          })
-        }))
         createDatabase = await importer('../src/index.js')
         create = async (opts) => {
           const id = Math.random().toString()
@@ -181,6 +175,12 @@ describe('test-database', () => {
           updaters[id] = createUpdater(Block)(createKV())
           return { db: await createDatabase.create(url) }
         }
+        await new Promise((resolve, reject) => {
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
+        })
       })
       test('basics', async () => {
         await basics(create)

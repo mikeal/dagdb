@@ -80,7 +80,10 @@ describe('test-stores', () => {
   })
 
   describe('kv', () => {
-    const create = require('./lib/mock-kv')
+    let create
+    before(async () => {
+      create = (await import('./lib/mock-kv.js')).default
+    })
     test('basics', async () => {
       await basics(create)
     })
@@ -92,18 +95,25 @@ describe('test-stores', () => {
       await store.put(block)
       same(Object.keys(store.storage).length, 2)
     })
-    describe('graph', () => {
-      graphTests(create, (store, ...args) => store.graph(...args))
-    })
-    describe('replicate', () => {
-      replicateTests(create)
+    test('add tests', () => {
+      describe('test-store kv graph', () => {
+        graphTests(create, (store, ...args) => store.graph(...args))
+      })
+      describe('test-store kv replicate', () => {
+        replicateTests(create)
+      })
     })
   })
 
   describe('s3', () => {
-    const createS3 = require('./lib/mock-s3')
-    const createStore = require('../src/stores/s3')(Block)
-    const create = opts => createStore(createS3(), opts)
+    let createS3
+    let createStore
+    let create
+    before(async () => {
+      createS3 = (await import('./lib/mock-s3.js')).default
+      createStore = (await import('../src/stores/s3.js')).default(Block)
+      create = opts => createStore(createS3(), opts)
+    })
     test('basics', async () => {
       await basics(create)
     })
@@ -115,32 +125,44 @@ describe('test-stores', () => {
       await store.put(block)
       same(Object.keys(store.s3.storage).length, 2)
     })
-    describe('graph', () => {
-      graphTests(create, (store, ...args) => store.graph(...args))
+
+    test('add tests', () => {
+      describe('test-store s3 graph', () => {
+        graphTests(create, (store, ...args) => store.graph(...args))
+      })
+      describe('test-store s3 replicate', () => {
+        replicateTests(create)
+      })
     })
-    describe('replicate', () => {
-      replicateTests(create)
-    })
+
   })
 
   describe('level', () => {
-    const memdown = require('memdown')
-    const createStore = require('../src/stores/level')(Block)
-    const create = () => createStore(memdown(Math.random().toString()))
+    let memdown
+    let createStore
+    let create
+    before(async () => {
+      memdown = (await import('memdown')).default
+      createStore = (await import('../src/stores/level.js')).default(Block)
+      create = () => createStore(memdown(Math.random().toString()))
+    })
     test('basics', async () => {
       await basics(create)
     })
-    describe('graph', () => {
-      graphTests(create, (store, ...args) => store.graph(...args))
+    test('add tests', () => {
+      describe('test-stores level graph', () => {
+        graphTests(create, (store, ...args) => store.graph(...args))
+      })
+      describe('test-stores level replicate', () => {
+        replicateTests(create)
+      })
     })
-    describe('replicate', () => {
-      replicateTests(create)
-    })
+
   })
 
   describe('errors', () => {
     test('unsupported scheme', async () => {
-      const main = require('../src/stores')(Block)
+      const main = (await import('../src/stores/index.js')).default(Block)
       try {
         await main.from('wss://')
         throw new Error('Did not throw')
@@ -154,7 +176,10 @@ describe('test-stores', () => {
     const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
     const stores = {}
 
-    const createNodejsHandler = require('../src/http/nodejs').blockstore
+    let createNodejsHandler
+    before(async () => {
+      createNodejsHandler = (await import('../src/http/nodejs.js')).default.blockstore
+    })
 
     const handler = async (req, res) => {
       const parsed = new URL('http://asdf' + req.url)
@@ -169,52 +194,65 @@ describe('test-stores', () => {
 
     describe('http', () => {
       const port = getPort()
-      const server = require('http').createServer(handler)
-      const closed = new Promise(resolve => server.once('close', resolve))
-      before(() => new Promise((resolve, reject) => {
+      let server
+      let closed
+      let createStore
+      let create
+      before(() => new Promise(async (resolve, reject) => {
+        server = (await import('http')).createServer(handler)
+        closed = new Promise(resolve => server.once('close', resolve))
         server.listen(port, e => {
           if (e) return reject(e)
           resolve()
         })
+        createStore = (await import('../src/stores/https.js')).default(Block)
+        create = (opts) => {
+          const id = Math.random().toString()
+          const url = `http://localhost:${port}?id=${id}`
+          stores[id] = inmem()
+          const store = createStore(url, opts)
+          return store
+        }
       }))
-      const createStore = require('../src/stores/https')(Block)
-      const create = (opts) => {
-        const id = Math.random().toString()
-        const url = `http://localhost:${port}?id=${id}`
-        stores[id] = inmem()
-        const store = createStore(url, opts)
-        return store
-      }
+
       test('basics', async () => {
         await basics(create)
       })
-      describe('store.graph()', () => {
-        graphTests(create, (store, ...args) => store.graph(...args))
-      })
-      describe('replicate', () => {
-        replicateTests(create)
-      })
-      after(() => {
-        server.close()
-        return closed
+      test('add tests', () => {
+        describe('test-store http store.graph()', () => {
+          graphTests(create, (store, ...args) => store.graph(...args))
+        })
+        describe('test-store http replicate', () => {
+          replicateTests(create)
+
+        })
+        after(() => {
+          server.close()
+          return closed
+        })
       })
     })
     describe('http no params', () => {
       const port = getPort()
       const store = inmem()
-      const server = require('http').createServer(createNodejsHandler(Block, store))
-      const closed = new Promise(resolve => server.once('close', resolve))
-      before(() => new Promise((resolve, reject) => {
+      let server
+      let closed
+      let createStore
+      let create
+      before(() => new Promise(async (resolve, reject) => {
+        server = (await import('http')).createServer(createNodejsHandler(Block, store))
+        closed = new Promise(resolve => server.once('close', resolve))
         server.listen(port, e => {
           if (e) return reject(e)
           resolve()
         })
+        createStore = (await import('../src/stores/https.js')).default(Block)
+        create = (opts) => {
+          const url = `http://localhost:${port}`
+          return createStore(url, opts)
+        }
       }))
-      const createStore = require('../src/stores/https')(Block)
-      const create = (opts) => {
-        const url = `http://localhost:${port}`
-        return createStore(url, opts)
-      }
+
       test('basics', async () => {
         await basics(create)
       })
@@ -231,7 +269,10 @@ describe('test-stores', () => {
       })
     })
     describe('http handler', () => {
-      const createHandler = require('../src/http/handlers').blockstore
+      let createHandler
+      before(async () => {
+        createHandler = (await import('../src/http/handlers.js')).blockstore
+      })
       test('head', async () => {
         const store = inmem()
         const handler = createHandler(Block, store)
@@ -249,9 +290,14 @@ describe('test-stores', () => {
   } else {
     describe('idb', function () {
       this.timeout(8000)
-      const idb = require('level-js')
-      const createStore = require('../src/stores/level')(Block)
-      const create = (opts) => createStore(idb(Math.random().toString()), opts)
+      let idb
+      let createStore
+      let create
+      before(async () => {
+        idb = (await import('level-js')).default
+        createStore = (await import('../src/stores/level.js')).default(Block)
+        create = (opts) => createStore(idb(Math.random().toString()), opts)
+      })
       test('basics', async () => {
         await basics(create)
       })

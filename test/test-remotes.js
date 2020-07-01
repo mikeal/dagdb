@@ -34,7 +34,7 @@ const createRemotes = async (strategy) => {
 
 const v1 = 'db-v1'
 
-describe('test-remotes', async () => {
+describe('test-remotes', () => {
   test('nothing to merge', async () => {
     let { db1, db2, remote } = await createRemotes({ full: true })
     await remote.pullDatabase(db2)
@@ -168,11 +168,168 @@ describe('test-remotes', async () => {
     const stores = {}
     const updaters = {}
 
-    const httpTests = (await import('./lib/http.js')).default
-    const createHandler = (await import('../src/http/nodejs.js')).default
-
+    let httpTests
+    let createHandler
+    before(async () => {
+      httpTests = (await import('./lib/http.js')).default
+      createHandler = (await import('../src/http/nodejs.js')).default
+      httpTests(handler, async port => {
+        const createDatabase = await import ('../src/index.js')
+        const create = async (opts) => {
+          const id = Math.random().toString()
+          const url = `http://localhost:${port}/${id}`
+          stores[id] = inmem()
+          updaters[id] = createUpdater(Block)(createKV())
+          return createDatabase.create(url)
+        }
+        test('basic full merge', async () => {
+          let db1 = await create()
+          let db2 = await create()
+          await db2.set('test', { hello: 'world' })
+          db2 = await db2.update()
+          const info = { source: db2.updater.infoUrl, strategy: { full: true } }
+          await db1.remotes.add('a', info)
+          db1 = await db1.update()
+          db1 = await createDatabase.open(db1.updater.infoUrl)
+          same(await db1.get('test'), { hello: 'world' })
+          await db2.set('test2', { foo: 'bar' })
+          db2 = await db2.update()
+          await db1.remotes.pull('a')
+          same(await db1.get('test2'), { foo: 'bar' })
+          db1 = await db1.update()
+          await db1.remotes.pull('a')
+          const root = db1.root
+          db1 = await db1.update()
+          root.equals(db1.root)
+        })
+        test('updater', async () => {
+          let db = await create()
+          await db.set('test', { hello: 'world' })
+          db = await db.update()
+          assert.ok(db.root.equals(await db.updater.root))
+        })
+        test('not found', async () => {
+          const db = await create()
+          const url = db.updater.infoUrl + 'notfound'
+          const get = bent(404, 'string')
+          const resp = await get(url)
+          same(resp, 'Not found')
+        })
+        test('push', async () => {
+          let db = await create()
+          const info = { source: db.updater.infoUrl, strategy: { full: true } }
+          delete db.updater
+          await db.remotes.add('origin', info)
+          db = await db.commit()
+          const remote = await db.remotes.get('origin')
+          await remote.push()
+        })
+        const createReadonly = async (opts) => {
+          const db = await create()
+          const url = db.updater.infoUrl
+          const split = url.split('/').filter(x => x)
+          const id = split[split.length - 1]
+          const updater = { root: db.root }
+          updaters[id] = updater
+          return [db, updater]
+        }
+        test('pull readonly', async () => {
+          let [db1, updater] = await createReadonly()
+          await db1.set('foo', 'bar')
+          db1 = await db1.commit()
+          updater.root = db1.root
+          let db2 = await create()
+          const info = { source: db1.updater.infoUrl, strategy: { full: true } }
+          await db2.remotes.add('test', info)
+          await db2.remotes.pull('test')
+          same(await db2.get('foo'), 'bar')
+          db2 = await db2.update()
+          try {
+            await db2.remotes.push('test')
+            throw new Error('Did not throw')
+          } catch (e) {
+            if (e.message !== 'Remote must have updater to use push') throw e
+          }
+        })
+        test('error: concurrent pushes', async () => {
+          let db = await create()
+          const oldRoot = db.root
+          const db2 = await create()
+          const info = { source: db.updater.infoUrl, strategy: { full: true } }
+          delete db.updater
+          await db.remotes.add('origin', info)
+          db = await db.commit()
+          const remote1 = await db.remotes.get('origin')
+          await replicate(db.root, db.store, db2.store)
+          const dec = { ...remote1.rootDecode }
+          const remote2 = new database.Remote({ ...dec }, db2)
+          try {
+            await Promise.all([remote1.push(), remote2.push()])
+            throw new Error('did not throw')
+          } catch (e) {
+            if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
+          }
+          const url = info.source
+          const split = url.split('/').filter(x => x)
+          const id = split[split.length - 1]
+          const root = new CID((await getJSON(info.source)).root)
+          const updater = { root, update: () => oldRoot }
+          updaters[id] = updater
+          try {
+            await remote1.push()
+            throw new Error('did not throw')
+          } catch (e) {
+            if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
+          }
+        })
+        test('error: update old reference', async () => {
+          let db = await create()
+          const oldHead = await db.getHead()
+          const url = db.updater.infoUrl
+          const split = url.split('/').filter(x => x)
+          const id = split[split.length - 1]
+          const info = { source: url, strategy: { full: true } }
+          await db.remotes.add('origin', info)
+          await db.set('blah', 'test')
+          db = await db.update()
+          const newHead = await db.getHead()
+          const newRoot = db.root
+          await db.set('another', 'test')
+          db = await db.update()
+          assert.ok(!oldHead.equals(newHead))
+          const remote = await db.remotes.get('origin')
+          const update = () => {
+            throw new Error('should not hit updater')
+          }
+          updaters[id] = { root: newRoot, update }
+          try {
+            await remote.push()
+            throw new Error('did not throw')
+          } catch (e) {
+            if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
+          }
+        })
+        test('error: create already created', async () => {
+          const db = await create()
+          try {
+            await createDatabase.create(db.updater.infoUrl)
+            throw new Error('Did not throw')
+          } catch (e) {
+            if (e.message !== 'Database already created') throw e
+          }
+        })
+        test('error: open database not created', async () => {
+          try {
+            await createDatabase.open(`http://localhost:${port}/empty`)
+            throw new Error('Did not throw')
+          } catch (e) {
+            if (e.message !== 'Database has not been created') throw e
+          }
+        })
+      })
+    })
     test('handler info, readonly', async () => {
-      const handler = (await import('../src/http/handlers.js')).default.info({}, { root: 'test' })
+      const handler = (await import('../src/http/handlers.js')).info({}, { root: 'test' })
       const resp = await handler({})
       const info = JSON.parse(resp.body.toString())
       same(info.root, 'test')
@@ -180,7 +337,7 @@ describe('test-remotes', async () => {
       same(info.blockstore, 'blockstore')
     })
     test('missing required param', async () => {
-      const handler = (await import('../src/http/handlers.js')).default.updater()
+      const handler = (await import('../src/http/handlers.js')).updater(Block)
       try {
         await handler({ params: {} })
         throw new Error('Did not throw')
@@ -193,7 +350,7 @@ describe('test-remotes', async () => {
       const block = Block.encoder(b, 'raw')
       const cid = await block.cid()
       const updater = { update: () => cid }
-      const handler = createHandler.updater(updater)
+      const handler = createHandler.updater(Block, updater)
       let head
       let body
       const mock = {
@@ -231,6 +388,7 @@ describe('test-remotes', async () => {
       if (req.url === '/empty') {
         return res.end(JSON.stringify({}))
       }
+      console.log({req, res})
       const [id] = req.url.split('/').filter(x => x)
       const store = stores[id]
       const updater = updaters[id]
@@ -238,159 +396,5 @@ describe('test-remotes', async () => {
       const _handler = createHandler(Block, store, updater)
       return _handler(req, res, '/' + id)
     }
-    httpTests(handler, async port => {
-      const createDatabase = await import ('../src/index.js')
-      const create = async (opts) => {
-        const id = Math.random().toString()
-        const url = `http://localhost:${port}/${id}`
-        stores[id] = inmem()
-        updaters[id] = createUpdater(Block)(createKV())
-        return createDatabase.create(url)
-      }
-      test('basic full merge', async () => {
-        let db1 = await create()
-        let db2 = await create()
-        await db2.set('test', { hello: 'world' })
-        db2 = await db2.update()
-        const info = { source: db2.updater.infoUrl, strategy: { full: true } }
-        await db1.remotes.add('a', info)
-        db1 = await db1.update()
-        db1 = await createDatabase.open(db1.updater.infoUrl)
-        same(await db1.get('test'), { hello: 'world' })
-        await db2.set('test2', { foo: 'bar' })
-        db2 = await db2.update()
-        await db1.remotes.pull('a')
-        same(await db1.get('test2'), { foo: 'bar' })
-        db1 = await db1.update()
-        await db1.remotes.pull('a')
-        const root = db1.root
-        db1 = await db1.update()
-        root.equals(db1.root)
-      })
-      test('updater', async () => {
-        let db = await create()
-        await db.set('test', { hello: 'world' })
-        db = await db.update()
-        assert.ok(db.root.equals(await db.updater.root))
-      })
-      test('not found', async () => {
-        const db = await create()
-        const url = db.updater.infoUrl + 'notfound'
-        const get = bent(404, 'string')
-        const resp = await get(url)
-        same(resp, 'Not found')
-      })
-      test('push', async () => {
-        let db = await create()
-        const info = { source: db.updater.infoUrl, strategy: { full: true } }
-        delete db.updater
-        await db.remotes.add('origin', info)
-        db = await db.commit()
-        const remote = await db.remotes.get('origin')
-        await remote.push()
-      })
-      const createReadonly = async (opts) => {
-        const db = await create()
-        const url = db.updater.infoUrl
-        const split = url.split('/').filter(x => x)
-        const id = split[split.length - 1]
-        const updater = { root: db.root }
-        updaters[id] = updater
-        return [db, updater]
-      }
-      test('pull readonly', async () => {
-        let [db1, updater] = await createReadonly()
-        await db1.set('foo', 'bar')
-        db1 = await db1.commit()
-        updater.root = db1.root
-        let db2 = await create()
-        const info = { source: db1.updater.infoUrl, strategy: { full: true } }
-        await db2.remotes.add('test', info)
-        await db2.remotes.pull('test')
-        same(await db2.get('foo'), 'bar')
-        db2 = await db2.update()
-        try {
-          await db2.remotes.push('test')
-          throw new Error('Did not throw')
-        } catch (e) {
-          if (e.message !== 'Remote must have updater to use push') throw e
-        }
-      })
-      test('error: concurrent pushes', async () => {
-        let db = await create()
-        const oldRoot = db.root
-        const db2 = await create()
-        const info = { source: db.updater.infoUrl, strategy: { full: true } }
-        delete db.updater
-        await db.remotes.add('origin', info)
-        db = await db.commit()
-        const remote1 = await db.remotes.get('origin')
-        await replicate(db.root, db.store, db2.store)
-        const dec = { ...remote1.rootDecode }
-        const remote2 = new database.Remote({ ...dec }, db2)
-        try {
-          await Promise.all([remote1.push(), remote2.push()])
-          throw new Error('did not throw')
-        } catch (e) {
-          if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
-        }
-        const url = info.source
-        const split = url.split('/').filter(x => x)
-        const id = split[split.length - 1]
-        const root = new CID((await getJSON(info.source)).root)
-        const updater = { root, update: () => oldRoot }
-        updaters[id] = updater
-        try {
-          await remote1.push()
-          throw new Error('did not throw')
-        } catch (e) {
-          if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
-        }
-      })
-      test('error: update old reference', async () => {
-        let db = await create()
-        const oldHead = await db.getHead()
-        const url = db.updater.infoUrl
-        const split = url.split('/').filter(x => x)
-        const id = split[split.length - 1]
-        const info = { source: url, strategy: { full: true } }
-        await db.remotes.add('origin', info)
-        await db.set('blah', 'test')
-        db = await db.update()
-        const newHead = await db.getHead()
-        const newRoot = db.root
-        await db.set('another', 'test')
-        db = await db.update()
-        assert.ok(!oldHead.equals(newHead))
-        const remote = await db.remotes.get('origin')
-        const update = () => {
-          throw new Error('should not hit updater')
-        }
-        updaters[id] = { root: newRoot, update }
-        try {
-          await remote.push()
-          throw new Error('did not throw')
-        } catch (e) {
-          if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
-        }
-      })
-      test('error: create already created', async () => {
-        const db = await create()
-        try {
-          await createDatabase.create(db.updater.infoUrl)
-          throw new Error('Did not throw')
-        } catch (e) {
-          if (e.message !== 'Database already created') throw e
-        }
-      })
-      test('error: open database not created', async () => {
-        try {
-          await createDatabase.open(`http://localhost:${port}/empty`)
-          throw new Error('Did not throw')
-        } catch (e) {
-          if (e.message !== 'Database has not been created') throw e
-        }
-      })
-    })
   }
 })

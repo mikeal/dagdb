@@ -1,10 +1,11 @@
 /* globals it */
-import replicate from '../../src/stores/replicate.js'
+import createReplicate from '../../src/stores/replicate.js'
 import Block from '@ipld/block/defaults.js'
 import assert from 'assert'
 
 const test = it
 const same = assert.deepStrictEqual
+const replicate = createReplicate(Block)
 
 const b = obj => Block.encoder(obj, 'dag-cbor')
 

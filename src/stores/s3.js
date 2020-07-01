@@ -1,4 +1,4 @@
-import createKVStore './kv.js'
+import createKVStore from './kv.js'
 
 const empty = new Uint8Array(0)
 

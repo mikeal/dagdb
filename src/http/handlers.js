@@ -78,7 +78,8 @@ const info = (store, updater, ext) => async opts => {
   return { headers: jsonHeaders(body), body }
 }
 
-const updater = updater => async opts => {
+const updater = (Block, updater) => async opts => {
+  const { CID } = Block
   if (!opts.params.new) throw new Error('Missing required param "new"')
   opts.params.new = new CID(opts.params.new)
   if (opts.params.old) opts.params.old = new CID(opts.params.old)
