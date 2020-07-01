@@ -1,6 +1,8 @@
 import Block from '@ipld/block/defaults.js'
 import createStore from '../../src/stores/kv.js'
-import { encode, decode } from 'charwise'
+import charwise from 'charwise'
+
+const { encode, decode } = charwise
 
 const KVStore = createStore(Block)
 

@@ -2,7 +2,7 @@
 import Block from '@ipld/block/defaults.js'
 import createInmemory from '../src/stores/inmemory.js'
 import createUpdater from '../src/updaters/kv.js'
-import createDatabaseInterface = '../src/database.js'
+import createDatabaseInterface from '../src/database.js'
 import createKV from './lib/mock-kv.js'
 import assert from 'assert'
 
@@ -14,7 +14,7 @@ const { CID } = Block
 
 const create = async () => {
   const store = inmem()
-  const updater = createUpdater(createKV())
+  const updater = createUpdater(Block)(createKV())
   const db = await database.create(store, updater)
   return { store, db, updater }
 }
@@ -30,7 +30,7 @@ const basics = async (_create = create) => {
   return latest
 }
 
-describe('test-database', () => {
+describe('test-database', async () => {
   test('basic set/get', async () => {
     await basics()
     await basics()
@@ -116,8 +116,8 @@ describe('test-database', () => {
 
   test('error: empty updater write', async () => {
     const store = inmem()
-    const db = await database.create(store, createUpdater(createKV()))
-    const updater = createUpdater(createKV())
+    const db = await database.create(store, createUpdater(Block)(createKV()))
+    const updater = createUpdater(Block)(createKV())
     const empty = database(db.root, store, updater)
     await empty.set('test', { hello: 'world' })
     let threw = true
@@ -131,11 +131,12 @@ describe('test-database', () => {
   })
 
   if (!process.browser) {
+    const httpModule = await import('http')
     const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
     const stores = {}
     const updaters = {}
 
-    const createHandler = require('../src/http/nodejs')
+    const createHandler = await import('../src/http/nodejs.js')
 
     const handler = async (req, res) => {
       const [id] = req.url.split('/').filter(x => x)
@@ -146,9 +147,9 @@ describe('test-database', () => {
       return _handler(req, res, '/' + id)
     }
 
-    describe('http', () => {
+    describe('http', async () => {
       const port = getPort()
-      const server = require('http').createServer(handler)
+      const server = httpModule.createServer(handler)
       const closed = new Promise(resolve => server.once('close', resolve))
       before(() => new Promise((resolve, reject) => {
         server.listen(port, e => {
@@ -156,12 +157,12 @@ describe('test-database', () => {
           resolve()
         })
       }))
-      const createDatabase = require('../')
+      const createDatabase = await import('../src/index.js')
       const create = async (opts) => {
         const id = Math.random().toString()
         const url = `http://localhost:${port}/${id}`
         stores[id] = inmem()
-        updaters[id] = createUpdater(createKV())
+        updaters[id] = createUpdater(Block)(createKV())
         return { db: await createDatabase.create(url) }
       }
       test('basics', async () => {

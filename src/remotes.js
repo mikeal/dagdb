@@ -1,5 +1,5 @@
 import { Lazy } from './utils.js'
-import hamt from './hamt.js'
+import * as hamt from './hamt.js'
 import bent from 'bent'
 import createReplicate from './stores/replicate.js'
 

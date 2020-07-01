@@ -1,4 +1,5 @@
-export default CID =>{
+export default Block => {
+  const { CID } = Block
   const lock = (self) => {
     let _resolve
     const p = new Promise(resolve => {

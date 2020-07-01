@@ -1,5 +1,5 @@
-import hamt from './hamt.js'
-import schema from './schema.json'
+import * as hamt from './hamt.js'
+import schema from 'dagdb/schema'
 import createValidate from '@ipld/schema-validation'
 
 const isCID = node => !!(node && node[cidSymbol])
@@ -60,4 +60,4 @@ const chain = (child, parent) => {
   readonly(child, 'getBlock', parent.getBlock || parent.store.get.bind(parent.store))
 }
 
-export { Lazy, NotFound, readonly, fromBlock, fromBlockUnsafe, validate, encoderTransaction, chain }
+export { Lazy, NotFound, readonly, fromBlock, fromBlockUnsafe, validate, encoderTransaction, chain, isCID }

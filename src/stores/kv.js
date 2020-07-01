@@ -13,7 +13,7 @@ export default Block => {
         return { missing }
       }
 
-      if (cid.codec === 'raw') return { complete: true }
+      if (cid.code === 0x55) return { complete: true }
 
       if (depth < 0) {
         incomplete.add(key)
@@ -45,7 +45,7 @@ export default Block => {
     }
 
     async _indexLinks (cid, block) {
-      if (cid.codec === 'raw') return
+      if (cid.code === 0x55) return
       const key = cid.toString('base32')
       const ops = []
       const seen = new Set()

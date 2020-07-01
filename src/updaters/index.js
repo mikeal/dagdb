@@ -1,6 +1,7 @@
 import bent from 'bent'
-import getJSON from 'json'
 import createKVUpdater from './kv.js'
+
+const getJSON = bent('json')
 
 export default Block => {
   const { CID } = Block

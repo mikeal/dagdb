@@ -1,10 +1,10 @@
-import hamt = './hamt.js'
+import * as hamt from './hamt.js'
 import {
   NotFound, readonly, isCID,
   fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
 } from './utils.js'
-import valueLoad from './values.js'
+import valueLoader from './values.js'
 
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 

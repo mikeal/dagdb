@@ -25,7 +25,7 @@ const create = Block => {
         missing.add(key)
         return { missing }
       }
-      if (cid.codec === 'raw') return { complete: true }
+      if (cid.code === 0x55) return { complete: true }
 
       if (depth < 0) {
         incomplete.add(key)
@@ -61,7 +61,7 @@ const create = Block => {
       }
       const _from = new Set()
       this.links.from.set(key, _from)
-      if (cid.codec === 'raw') return
+      if (cid.code === 0x55) return
       let complete = true
       for (const [, link] of block.reader().links()) {
         const linkKey = link.toString('base32')

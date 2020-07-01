@@ -14,7 +14,7 @@
     "test:cli": "tap test/cli/test-*.js",
     "test": "hundreds mocha test/test-*.js && npm run test:browser",
     "coverage": "nyc --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
-    "build:schema": "ipld-schema to-json Schema.md > src/schema.json"
+    "build:schema": "ipld-schema to-json Schema.md > src/schema/schema.json"
   },
   "repository": {
     "type": "git",
@@ -29,7 +29,19 @@
   "homepage": "https://github.com/mikeal/dagdb#readme",
   "browser": {
     "./index.js": "./src/browser.js",
-    "./src/native/index.js": "./src/native/browser.js"
+    "./src/native/index.js": "./src/native/browser.js",
+    "dagdb/schema": "./src/schema/index.js"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/src/index.cjs",
+      "import": "./src/index.js"
+    },
+    "./schema": {
+      "require": "./src/schema/schema.cjs",
+      "browser": "./src/schema/index.js",
+      "import": "./src/schema/schema.mjs"
+    }
   },
   "dependencies": {
     "@ipld/block": "^5.1.1",

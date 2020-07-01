@@ -1,5 +1,5 @@
 import { validate, chain } from './utils.js'
-import hamt from ./hamt.js
+import * as hamt from './hamt.js'
 
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only
@@ -16,7 +16,7 @@ const lazyprop = (obj, name, fn) => {
   Object.defineProperty(obj, name, { get })
 }
 
-module.exports = (Block, fromBlock, kv) => {
+export default (Block, fromBlock, kv) => {
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const emptyHamt = hamt.empty(Block, 'dag-cbor')
 

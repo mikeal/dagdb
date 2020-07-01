@@ -2,6 +2,7 @@ import { fromBlock, validate, readonly } from './utils.js'
 import createKV from './kv.js'
 import createStores from './stores/index.js'
 import createUpdaters from './updaters/index.js'
+import createIndexes from './indexes.js'
 import createRemotes from './remotes.js'
 
 const databaseEncoder = async function * (db) {
