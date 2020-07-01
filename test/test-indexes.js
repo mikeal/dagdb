@@ -1,6 +1,6 @@
 /* globals describe, it */
 import Block from '@ipld/block/defaults.js'
-import createImemory from '../src/stores/inmemory.js'
+import createInmemory from '../src/stores/inmemory.js'
 import createUpdater from '../src/updaters/kv.js'
 import createDatabaseInterface from '../src/database.js'
 import createKV from './lib/mock-kv.js'
@@ -13,7 +13,7 @@ const same = assert.deepStrictEqual
 
 const create = async (fixture) => {
   const store = inmem()
-  const updater = createUpdater(createKV())
+  const updater = createUpdater(Block)(createKV())
   let db = await database.create(store, updater)
   if (fixture) {
     for (const [key, value] of Object.entries(fixture)) {

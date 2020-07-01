@@ -37,6 +37,7 @@ const createGet = (local, remote) => {
 
 const create = (Block) => {
   const { encode, decode, register } = valueLoader(Block)
+  const { toString } = Block.multiformats.bytes
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
@@ -158,7 +159,7 @@ const create = (Block) => {
         }
         const _iter = hamt.all(head, get)
         for await (let { key, value } of _iter) {
-          key = key.toString()
+          key = toString(key)
           if (!t.cache.has(key)) {
             if (opts.blocks) yield [key, await get(value)]
             else yield [key, value]

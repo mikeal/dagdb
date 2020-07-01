@@ -6,6 +6,8 @@ import createDatabaseInterface from '../src/database.js'
 import createKV from './lib/mock-kv.js'
 import assert from 'assert'
 
+const importer = str => import(str).then(m => m.default || m)
+
 const database = createDatabaseInterface(Block)
 const test = it
 const same = assert.deepStrictEqual
@@ -30,7 +32,7 @@ const basics = async (_create = create) => {
   return latest
 }
 
-describe('test-database', async () => {
+describe('test-database', () => {
   test('basic set/get', async () => {
     await basics()
     await basics()
@@ -131,40 +133,55 @@ describe('test-database', async () => {
   })
 
   if (!process.browser) {
-    const httpModule = await import('http')
-    const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
-    const stores = {}
-    const updaters = {}
+    let httpModule
+    let getPort
+    let stores
+    let updaters
+    let createHandler
+    let handler
+    before(async () => {
+      httpModule = await importer('http')
+      getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
+      stores = {}
+      updaters = {}
 
-    const createHandler = await import('../src/http/nodejs.js')
+      createHandler = await importer('../src/http/nodejs.js')
 
-    const handler = async (req, res) => {
-      const [id] = req.url.split('/').filter(x => x)
-      const store = stores[id]
-      const updater = updaters[id]
-      if (!store) throw new Error('Missing store')
-      const _handler = createHandler(Block, store, updater)
-      return _handler(req, res, '/' + id)
-    }
-
-    describe('http', async () => {
-      const port = getPort()
-      const server = httpModule.createServer(handler)
-      const closed = new Promise(resolve => server.once('close', resolve))
-      before(() => new Promise((resolve, reject) => {
-        server.listen(port, e => {
-          if (e) return reject(e)
-          resolve()
-        })
-      }))
-      const createDatabase = await import('../src/index.js')
-      const create = async (opts) => {
-        const id = Math.random().toString()
-        const url = `http://localhost:${port}/${id}`
-        stores[id] = inmem()
-        updaters[id] = createUpdater(Block)(createKV())
-        return { db: await createDatabase.create(url) }
+      handler = async (req, res) => {
+        const [id] = req.url.split('/').filter(x => x)
+        const store = stores[id]
+        const updater = updaters[id]
+        if (!store) throw new Error('Missing store')
+        const _handler = createHandler(Block, store, updater)
+        return _handler(req, res, '/' + id)
       }
+    })
+
+    describe('http', () => {
+      let port
+      let server
+      let closed
+      let createDatabase
+      let create
+      before(async () => {
+        port = getPort()
+        server = httpModule.createServer(handler)
+        closed = new Promise(resolve => server.once('close', resolve))
+        before(() => new Promise((resolve, reject) => {
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
+        }))
+        createDatabase = await importer('../src/index.js')
+        create = async (opts) => {
+          const id = Math.random().toString()
+          const url = `http://localhost:${port}/${id}`
+          stores[id] = inmem()
+          updaters[id] = createUpdater(Block)(createKV())
+          return { db: await createDatabase.create(url) }
+        }
+      })
       test('basics', async () => {
         await basics(create)
       })

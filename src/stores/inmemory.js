@@ -1,4 +1,5 @@
 const create = Block => {
+  const { CID } = Block
   class Missing extends Error {
     get statusCode () {
       return 404

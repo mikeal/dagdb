@@ -17,6 +17,7 @@ const lazyprop = (obj, name, fn) => {
 }
 
 export default (Block, fromBlock, kv) => {
+  const { toString } = Block.multiformats.bytes
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const emptyHamt = hamt.empty(Block, 'dag-cbor')
 
@@ -159,7 +160,7 @@ export default (Block, fromBlock, kv) => {
       const index = await p
       const prop = index.name
       for await (let { key, value } of index.entries()) {
-        key = key.toString()
+        key = toString(key)
         let kv
         let link
         if (opts.uniqueSources) {

@@ -1,5 +1,5 @@
 /* globals describe, it */
-import hamt from '../src/hamt.js'
+import * as hamt from '../src/hamt.js'
 import Block from '@ipld/block/defaults.js'
 import assert from 'assert'
 

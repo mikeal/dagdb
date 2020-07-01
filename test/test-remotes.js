@@ -20,7 +20,7 @@ const getJSON = bent('json')
 
 const create = async () => {
   const store = inmem()
-  const updater = createUpdater(createKV())
+  const updater = createUpdater(Block)(createKV())
   const db = await database.create(store, updater)
   return { store, db, updater }
 }
@@ -34,7 +34,7 @@ const createRemotes = async (strategy) => {
 
 const v1 = 'db-v1'
 
-describe('test-remotes', () => {
+describe('test-remotes', async () => {
   test('nothing to merge', async () => {
     let { db1, db2, remote } = await createRemotes({ full: true })
     await remote.pullDatabase(db2)
@@ -99,7 +99,8 @@ describe('test-remotes', () => {
   })
 
   test('unsupported scheme', async () => {
-    const main = require('../src/updaters')(Block)
+    const create = await import('../src/updaters/index.js')
+    const main = create.default(Block)
     try {
       await main.from('ws://')
       throw new Error('Did not throw')
@@ -119,7 +120,8 @@ describe('test-remotes', () => {
   })
 
   test('error: open and create w/o url', async () => {
-    const main = require('../src/bare')(Block)
+    const bare = await import('../src/bare.js')
+    const main = bare.default(Block)
     try {
       await main.open('test')
       throw new Error('Did not throw')
@@ -166,11 +168,11 @@ describe('test-remotes', () => {
     const stores = {}
     const updaters = {}
 
-    const httpTests = require('./lib/http.js')
-    const createHandler = require('../src/http/nodejs')
+    const httpTests = (await import('./lib/http.js')).default
+    const createHandler = (await import('../src/http/nodejs.js')).default
 
     test('handler info, readonly', async () => {
-      const handler = require('../src/http/handlers').info({}, { root: 'test' })
+      const handler = (await import('../src/http/handlers.js')).default.info({}, { root: 'test' })
       const resp = await handler({})
       const info = JSON.parse(resp.body.toString())
       same(info.root, 'test')
@@ -178,7 +180,7 @@ describe('test-remotes', () => {
       same(info.blockstore, 'blockstore')
     })
     test('missing required param', async () => {
-      const handler = require('../src/http/handlers').updater()
+      const handler = (await import('../src/http/handlers.js')).default.updater()
       try {
         await handler({ params: {} })
         throw new Error('Did not throw')
@@ -236,13 +238,13 @@ describe('test-remotes', () => {
       const _handler = createHandler(Block, store, updater)
       return _handler(req, res, '/' + id)
     }
-    httpTests(handler, port => {
-      const createDatabase = require('../')
+    httpTests(handler, async port => {
+      const createDatabase = await import ('../src/index.js')
       const create = async (opts) => {
         const id = Math.random().toString()
         const url = `http://localhost:${port}/${id}`
         stores[id] = inmem()
-        updaters[id] = createUpdater(createKV())
+        updaters[id] = createUpdater(Block)(createKV())
         return createDatabase.create(url)
       }
       test('basic full merge', async () => {
