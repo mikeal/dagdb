@@ -26,7 +26,7 @@ const createGet = (local, remote) => {
       return ret
     }
     // final cache check, useful under concurrent load
-    // istanbul ignore next
+    // c8 ignore next
     if (cache.has(key)) return cache.get(key)
     const block = await remote(cid)
     _cache(block)
@@ -61,7 +61,7 @@ const create = (Block) => {
     // an important guard because it protects us from
     // inserting an empty transaction head when there
     // are other bugs
-    // istanbul ignore next
+    // c8 ignore next
     if (!last) throw new Error('nothing from hamt')
 
     const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
@@ -191,7 +191,7 @@ const create = (Block) => {
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
-      // istanbul ignore next
+      // c8 ignore next
       if (this.__get(key)) return this.__get(key)
       return block
     }
@@ -305,7 +305,7 @@ const create = (Block) => {
           // in the browser and not in some Node.js versions. This is easily
           // fixable below but it can't be tested effectively in Node.js
           // so we have to disable coverage until we have browser coverage working.
-          // istanbul ignore else
+          // c8 ignore else
           if (block) value.push(block)
           this.cache.set(key, value)
         }

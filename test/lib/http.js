@@ -1,10 +1,10 @@
 /* globals describe, before, after */
 import { createServer } from 'http'
 
-export default (handler, tests) => {
+export default (name, handler, tests) => {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
 
-  describe('http', () => {
+  describe(`${name} http`, () => {
     const port = getPort()
     const server = createServer(handler)
     const closed = new Promise(resolve => server.once('close', resolve))

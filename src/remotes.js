@@ -86,13 +86,14 @@ export default (Block, stores, toBlock, updaters, CID) => {
         known.push(this.rootDecode.merged)
       }
       let cids
-      // istanbul ignore else
       if (strategy.full) {
         cids = await this.fullMerge(database, known)
       } else if (strategy.keyed) {
         cids = await this.keyedMerge(database, strategy.keyed, known)
-      } else {
+      } /* c8 ignore next */ else {
+        /* c8 ignore next */
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
+        /* c8 ignore next */
       }
       for (const cid of cids) {
         await replicate(cid, database.store, this.db.store)
