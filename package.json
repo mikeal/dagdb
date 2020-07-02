@@ -10,7 +10,7 @@
     "lint": "standard",
     "pretest": "npm run lint",
     "test:node": "mocha test/test-*.js",
-    "test:browser": "polendina --cleanup test/test-*.js",
+    "test:browser": "polendina --cleanup --timeout=120 test/test-*.js",
     "test:cli": "tap test/cli/test-*.js",
     "test:no-coverage": "npm run lint && npm run test:node && npm run test:browser",
     "test": "hundreds mocha test/test-*.js && npm run test:browser",
