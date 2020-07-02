@@ -27,7 +27,7 @@ jobs:
       run: npm test
     - name: Test
       if: ${{ matrix.node-version == '12.x' }}
-      run: npm test:no-coverage
+      run: npm run test:no-coverage
   publish:
     name: Publish
     needs: test
