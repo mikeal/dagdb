@@ -484,7 +484,7 @@ const replicateTests = create => {
     assert.ok(!complete && !missing && incomplete)
     same(count, 0)
     same(incomplete.size, 1)
-  })
+  }).timeout(3000)
   test('propogate storage error', async () => {
     const _from = await create()
     const _to = await create()
