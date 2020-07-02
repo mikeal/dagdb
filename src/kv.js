@@ -26,10 +26,11 @@ const createGet = (local, remote) => {
       return ret
     }
     // final cache check, useful under concurrent load
-    // c8 ignore next
+    /* c8 ignore next */
     if (cache.has(key)) return cache.get(key)
     const block = await remote(cid)
     _cache(block)
+    /* c8 ignore next */
     return block
   }
   return get
@@ -61,11 +62,12 @@ const create = (Block) => {
     // an important guard because it protects us from
     // inserting an empty transaction head when there
     // are other bugs
-    // c8 ignore next
+    /* c8 ignore next */
     if (!last) throw new Error('nothing from hamt')
 
     const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
     yield toBlock({ 'kv-v1': { head, ops, prev } }, 'Transaction')
+    /* c8 ignore next */
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -191,8 +193,10 @@ const create = (Block) => {
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
-      // c8 ignore next
+      /* c8 ignore next */
       if (this.__get(key)) return this.__get(key)
+      // workaround, fixed in Node.js v14.5.0
+      /* c8 ignore next */
       return block
     }
 
@@ -233,7 +237,7 @@ const create = (Block) => {
         const { done } = await reader.next()
         if (done) return i
         i++
-      }
+      } /* c8 ignore next */
     }
 
     async commit () {
@@ -386,8 +390,9 @@ const create = (Block) => {
       // TODO: cancel slower one
       if (common) return common
       else {
-        return (await Promise.all([old, latest])).filter(x => x)[0]
-      }
+        const r = (await Promise.all([old, latest])).filter(x => x)[0]
+        return r
+      }/* c8 ignore next */
     }
 
     const common = await race()

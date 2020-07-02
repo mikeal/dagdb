@@ -26,7 +26,7 @@ export default (Block, ...args) => {
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
     }
-    throw new Error('Not implemented')
+    throw new Error('Not implemented') /* c8 ignore next */
   }
   const create = async (id, ...args) => {
     if (isHttp(id)) {
@@ -34,7 +34,7 @@ export default (Block, ...args) => {
       if (info.root) throw new Error('Database already created')
       return database.create(store, updater, ...args)
     }
-    throw new Error('Not implemented')
+    throw new Error('Not implemented') /* c8 ignore next */
   }
   return { create, open }
 }

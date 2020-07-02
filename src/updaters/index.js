@@ -32,7 +32,7 @@ export default Block => {
     if (id.startsWith('http://') || /* istanbul ignore next */ id.startsWith('https://')) {
       return new HttpUpdater(id, ...args)
     }
-    throw new Error(`Unsupported identifier "${id}"`)
+    throw new Error(`Unsupported identifier "${id}"`) /* c8 ignore next */
   }
   return { from, kv: createKVUpdater(CID) }
 }

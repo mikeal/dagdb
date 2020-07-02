@@ -134,7 +134,6 @@ describe('test-stores', () => {
         replicateTests(create)
       })
     })
-
   })
 
   describe('level', () => {
@@ -157,7 +156,6 @@ describe('test-stores', () => {
         replicateTests(create)
       })
     })
-
   })
 
   describe('errors', () => {
@@ -198,21 +196,23 @@ describe('test-stores', () => {
       let closed
       let createStore
       let create
-      before(() => new Promise(async (resolve, reject) => {
-        server = (await import('http')).createServer(handler)
-        closed = new Promise(resolve => server.once('close', resolve))
-        server.listen(port, e => {
-          if (e) return reject(e)
-          resolve()
+      before(() => new Promise((resolve, reject) => {
+        return (new Promise(resolve => resolve())).then(async () => {
+          server = (await import('http')).createServer(handler)
+          closed = new Promise(resolve => server.once('close', resolve))
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
+          createStore = (await import('../src/stores/https.js')).default(Block)
+          create = (opts) => {
+            const id = Math.random().toString()
+            const url = `http://localhost:${port}?id=${id}`
+            stores[id] = inmem()
+            const store = createStore(url, opts)
+            return store
+          }
         })
-        createStore = (await import('../src/stores/https.js')).default(Block)
-        create = (opts) => {
-          const id = Math.random().toString()
-          const url = `http://localhost:${port}?id=${id}`
-          stores[id] = inmem()
-          const store = createStore(url, opts)
-          return store
-        }
       }))
 
       test('basics', async () => {
@@ -224,7 +224,6 @@ describe('test-stores', () => {
         })
         describe('test-store http replicate', () => {
           replicateTests(create)
-
         })
         after(() => {
           server.close()
@@ -239,18 +238,20 @@ describe('test-stores', () => {
       let closed
       let createStore
       let create
-      before(() => new Promise(async (resolve, reject) => {
-        server = (await import('http')).createServer(createNodejsHandler(Block, store))
-        closed = new Promise(resolve => server.once('close', resolve))
-        server.listen(port, e => {
-          if (e) return reject(e)
-          resolve()
+      before(() => new Promise((resolve, reject) => {
+        return (new Promise(resolve => resolve())).then(async () => {
+          server = (await import('http')).createServer(createNodejsHandler(Block, store))
+          closed = new Promise(resolve => server.once('close', resolve))
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
+          createStore = (await import('../src/stores/https.js')).default(Block)
+          create = (opts) => {
+            const url = `http://localhost:${port}`
+            return createStore(url, opts)
+          }
         })
-        createStore = (await import('../src/stores/https.js')).default(Block)
-        create = (opts) => {
-          const url = `http://localhost:${port}`
-          return createStore(url, opts)
-        }
       }))
 
       test('basics', async () => {
@@ -301,11 +302,13 @@ describe('test-stores', () => {
       test('basics', async () => {
         await basics(create)
       })
-      describe('graph', () => {
-        graphTests(create, (store, ...args) => store.graph(...args))
-      })
-      describe('replicate', () => {
-        replicateTests(create)
+      test('add tests', () => {
+        describe('test-store idb graph', () => {
+          graphTests(create, (store, ...args) => store.graph(...args))
+        })
+        describe('test-store idb replicate', () => {
+          replicateTests(create)
+        })
       })
     })
   }

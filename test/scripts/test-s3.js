@@ -4,10 +4,10 @@ import { graphTests, replicateTests, basics } from '../lib/storage.js'
 import Block from '@ipld/block/defaults.js'
 
 import createS3Store from '../../src/store/s3.js'
-import createStore = createS3Store(Block)
 import { S3 } from 'aws-sdk'
 import awsConfig from 'aws-config'
 
+const createStore = createS3Store(Block)
 const test = it
 
 if (!process.env.DAGDB_TEST_BUCKET) {

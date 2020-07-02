@@ -147,13 +147,15 @@ describe('test-errors', () => {
       let server
       let closed
 
-      before(() => new Promise(async (resolve, reject) => {
-        handler = (await import('../src/http/nodejs.js')).default.blockstore(Block, store)
-        server = (await import('http')).createServer(handler)
-        closed = new Promise(resolve => server.once('close', resolve))
-        server.listen(port, e => {
-          if (e) return reject(e)
-          resolve()
+      before(() => new Promise((resolve, reject) => {
+        return (new Promise(resolve => resolve())).then(async () => {
+          handler = (await import('../src/http/nodejs.js')).default.blockstore(Block, store)
+          server = (await import('http')).createServer(handler)
+          closed = new Promise(resolve => server.once('close', resolve))
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
         })
       }))
 

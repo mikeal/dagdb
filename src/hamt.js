@@ -32,13 +32,14 @@ const transaction = async function * (head, ops, get, Block) {
   const load = mkload(get)
   let map = await iamap.load({ save, load, ...store }, head)
   for (const op of ops) {
-    /* c8 ignore else */
     if (op.set) {
       map = await map.set(op.set.key, op.set.val)
     } else if (op.del) {
       map = await map.delete(op.del.key)
-    } else {
+    } /* c8 ignore next */ else {
+      /* c8 ignore next */
       throw new Error('Invalid operation')
+      /* c8 ignore next */
     }
   }
   // would be great to have a hamt API that took bulk operations

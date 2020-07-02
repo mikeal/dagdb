@@ -34,10 +34,10 @@ const blockstore = (Block, store) => {
           block = await store.get(cid)
         } catch (e) {
           // we don't have intentional errors in our own cod
-          // istanbul ignore else
-          if (e.statusCode === 404) return { statusCode: 404 }
-          // istanbul ignore next
+          if (e.statusCode === 404) return { statusCode: 404 } /* c8 ignore next */
+          /* c8 ignore next */
           throw e
+          /* c8 ignore next */
         }
         const body = block.encodeUnsafe()
         return { headers: { 'content-length': body.length }, body }
@@ -46,9 +46,7 @@ const blockstore = (Block, store) => {
       if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
       const cid = new CID(path)
       const block = Block.create(body, cid)
-      if (!(await block.validate())) {
-        throw new Error('Block data does not match hash in CID')
-      }
+      await block.validate()
       await store.put(block)
       return { statusCode: 201 }
     } else if (method === 'HEAD') {
@@ -62,7 +60,7 @@ const blockstore = (Block, store) => {
       const e = new Error(`Unknown method "${method}"`)
       e.statusCode = 405
       throw e
-    }
+    } /* c8 ignore next */
   }
   return handler
 }
@@ -75,7 +73,8 @@ const info = (store, updater, ext) => async opts => {
   }
   if (updater.update) info.updater = 'updater'
   const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
-  return { headers: jsonHeaders(body), body }
+  const ret = { headers: jsonHeaders(body), body }
+  return ret
 }
 
 const updater = (Block, updater) => async opts => {
@@ -85,6 +84,7 @@ const updater = (Block, updater) => async opts => {
   if (opts.params.old) opts.params.old = new CID(opts.params.old)
   const cid = await updater.update(opts.params.new, opts.params.old)
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
-  return { headers: jsonHeaders(body), body }
+  const ret = { headers: jsonHeaders(body), body }
+  return ret
 }
 export { blockstore, info, updater }

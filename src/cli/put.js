@@ -1,5 +1,5 @@
 
-import { /*  readwrite, */ checkfile, options } = from '../car.js'
+import { checkfile, options } from '../car.js'
 // const Block = require('@ipld/block')
 // const database = require('../database')(Block)
 

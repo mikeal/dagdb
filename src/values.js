@@ -20,7 +20,7 @@ export default (Block) => {
     for await (const block of gen) {
       // testing these guards would require an implementation w/ a schema
       // for a bad implementation, which would be bad to ship with.
-      // c8 ignore next
+      /* c8 ignore next */
       if (last) throw new Error('Encoder yield after non-block')
       if (Block.isBlock(block)) {
         yield block
@@ -28,7 +28,7 @@ export default (Block) => {
       }
       last = block
     }
-    // c8 ignore next
+    /* c8 ignore next */
     if (typeof last === 'undefined') throw new Error('Encoder did not yield a root node')
     set(last)
   }

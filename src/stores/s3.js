@@ -14,7 +14,7 @@ const ls = async function * (s3, opts) {
       return
     }
     opts.StartAfter = data.Contents[data.Contents.length - 1].Key
-  } while (data.Contents.length)
+  } /* c8 ignore next */ while (data.Contents.length)
 }
 
 export default Block => {
@@ -41,10 +41,11 @@ export default Block => {
       try {
         resp = await this.s3.headObject({ Key }).promise()
       } catch (e) {
-        // istanbul ignore else
-        if (e.statusCode === 404) return false
-        // istanbul ignore next
+        /* c8 ignore next */
+        if (e.statusCode === 404) return false /* c8 ignore next */
+        /* c8 ignore next */
         throw e
+        /* c8 ignore next */
       }
       return { length: resp.ContentLength }
     }

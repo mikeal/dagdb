@@ -44,7 +44,7 @@ export default Block => {
     async _hasBlock (cid) {
       const resp = await this._head(this.mkurl(cid.toString('base32')))
       if (resp.statusCode === 200) return true
-      else return false
+      else return false /* c8 ignore next */
     }
 
     async graph (cid, depth) {

@@ -25,7 +25,8 @@ export default (Block, fromBlock, kv) => {
   const exports = {}
 
   const updatePropIndex = async function * (prop, ops) {
-    // c8 ignore next // dev-only guard
+    // dev-only guard
+    /* c8 ignore next */
     if (prop.updated) throw new Error('Index has already been updated')
     prop.updated = true
     const root = await prop.rootData

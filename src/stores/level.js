@@ -47,10 +47,11 @@ export default Block => {
       try {
         resp = await this.lev.get(this._mkey(arr))
       } catch (e) {
-        // istanbul ignore else
-        if (e.status === 404) return false
-        // istanbul ignore next
+        /* c8 ignore next */
+        if (e.status === 404) return false /* c8 ignore next */
+        /* c8 ignore next */
         throw e
+        /* c8 ignore next */
       }
       return { length: resp.length }
     }
@@ -61,7 +62,7 @@ export default Block => {
       } catch (e) {
         e.statusCode = e.status
         throw e
-      }
+      } /* c8 ignore next */
     }
 
     _linksFrom (key) {

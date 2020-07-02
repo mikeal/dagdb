@@ -1,4 +1,4 @@
-/* globals describe, it */
+/* globals describe, before, it */
 import Block from '@ipld/block/defaults.js'
 import bent from 'bent'
 import createInmemory from '../src/stores/inmemory.js'
@@ -178,7 +178,7 @@ describe('test-remotes', () => {
           let createDatabase
           let create
           before(async () => {
-            createDatabase = (await import ('../src/index.js')).default
+            createDatabase = (await import('../src/index.js')).default
             create = async (opts) => {
               const id = Math.random().toString()
               const url = `http://localhost:${port}/${id}`

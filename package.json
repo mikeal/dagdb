@@ -10,7 +10,7 @@
     "lint": "standard",
     "pretest": "npm run lint",
     "test:node": "mocha test/test-*.js",
-    "test:browser": "polendina --cleanup --service-worker test/test-*.js",
+    "test:browser": "polendina --cleanup test/test-*.js",
     "test:cli": "tap test/cli/test-*.js",
     "test": "hundreds mocha test/test-*.js && npm run test:browser",
     "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",

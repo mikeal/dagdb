@@ -17,9 +17,13 @@ export default Block => {
     try {
       buff = await updater.store._getKey(['root'])
     } catch (e) {
-      // istanbul ignore else
-      if (e.message.toLowerCase().includes('not found')) return null
-      else throw e
+      if (e.message.toLowerCase().includes('not found')) {
+        return null
+      } /* c8 ignore next */ else {
+        /* c8 ignore next */
+        throw e
+        /* c8 ignore next */
+      }
     }
     return new CID(buff)
   }

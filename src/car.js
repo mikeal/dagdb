@@ -26,7 +26,6 @@ const loadReadOnly = async filename => {
 const loadWritable = async filename => {
 }
 
-
 const options = yargs => {
   yargs.option('dbfile', {
     desc: 'File containing the database',
@@ -93,4 +92,4 @@ const readwrite = async (filename, exportFile) => {
   return { write, root, store }
 }
 
-export { loadReadOnly loadWritable, options, checkfile, readwrite, readonly }
+export { loadReadOnly, loadWritable, options, checkfile, readwrite }
