@@ -1,9 +1,11 @@
 /* globals it */
-const replicate = require('../../src/stores/replicate')
+import createReplicate from '../../src/stores/replicate.js'
+import Block from '@ipld/block/defaults.js'
+import assert from 'assert'
+
 const test = it
-const Block = require('@ipld/block')
-const assert = require('assert')
 const same = assert.deepStrictEqual
+const replicate = createReplicate(Block)
 
 const b = obj => Block.encoder(obj, 'dag-cbor')
 
@@ -482,7 +484,7 @@ const replicateTests = create => {
     assert.ok(!complete && !missing && incomplete)
     same(count, 0)
     same(incomplete.size, 1)
-  })
+  }).timeout(3000)
   test('propogate storage error', async () => {
     const _from = await create()
     const _to = await create()
@@ -503,8 +505,4 @@ const replicateTests = create => {
   })
 }
 
-exports.fixtures = fixtures
-exports.graphTests = graphTests
-exports.replicateTests = replicateTests
-exports.hello = hello
-exports.basics = basics
+export { fixtures, graphTests, replicateTests, hello, basics }

@@ -1,10 +1,9 @@
-const { fromBlock, validate, readonly } = require('./utils')
-const createKV = require('./kv')
-const createStores = require('./stores')
-const createUpdaters = require('./updaters')
-const createRemotes = require('./remotes')
-const createIndexes = require('./indexes')
-const CID = require('cids')
+import { fromBlock, validate, readonly } from './utils.js'
+import createKV from './kv.js'
+import createStores from './stores/index.js'
+import createUpdaters from './updaters/index.js'
+import createIndexes from './indexes.js'
+import createRemotes from './remotes.js'
 
 const databaseEncoder = async function * (db) {
   const kv = await db._kv
@@ -19,7 +18,8 @@ const databaseEncoder = async function * (db) {
   yield db.root
 }
 
-module.exports = (Block) => {
+export default (Block) => {
+  const { CID } = Block
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const kv = createKV(Block)
   const stores = createStores(Block)

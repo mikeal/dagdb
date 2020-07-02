@@ -1,9 +1,13 @@
-const { stat } = require('fs').promises
-const { createWriteStream } = require('fs')
-const { options } = require('../car')
-const carfile = require('datastore-car')
-const Block = require('@ipld/block')
-const database = require('../database')(Block)
+import { promises as fs, createWriteStream } from 'fs'
+
+import { options } from '../car.js'
+import carfile from 'datastore-car'
+import Block from '@ipld/block/defaults.js'
+import createDatabase from '../database.js'
+
+const database = createDatabase(Block)
+
+const { stat } = fs
 
 const missing = async filename => {
   try {
@@ -29,7 +33,9 @@ const init = async argv => {
   await car.close()
   console.log(`Initialized empty database in ${argv.dbfile}`)
 }
-exports.handler = init
-exports.desc = 'Create initial db file'
-exports.command = 'init'
-exports.builder = options
+const handler = init
+const desc = 'Create initial db file'
+const command = 'init'
+const builder = options
+
+export { handler, desc, command, builder }

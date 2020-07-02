@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-const yargs = require('yargs')
+import yargs from 'yargs'
+
 const args = yargs
   .commandDir('./src/cli')
   .demandCommand()

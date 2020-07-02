@@ -1,10 +1,12 @@
 /* globals describe, before, after */
-module.exports = (handler, tests) => {
+import { createServer } from 'http'
+
+export default (name, handler, tests) => {
   const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
 
-  describe('http', () => {
+  describe(`${name} http`, () => {
     const port = getPort()
-    const server = require('http').createServer(handler)
+    const server = createServer(handler)
     const closed = new Promise(resolve => server.once('close', resolve))
     before(() => new Promise((resolve, reject) => {
       server.listen(port, e => {

@@ -1,6 +1,6 @@
-const createHttp = require('./https')
+import createHttp from './https.js'
 
-module.exports = Block => {
+export default Block => {
   const http = createHttp(Block)
   const from = str => {
     if (str.startsWith('http://') || /* istanbul ignore next */ str.startsWith('https://')) {

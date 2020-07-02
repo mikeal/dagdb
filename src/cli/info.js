@@ -1,4 +1,4 @@
-const { readonly, checkfile, options } = require('../car')
+import { readonly, checkfile, options } from '../car.js'
 
 const handler = async argv => {
   await checkfile(argv.dbfile)
@@ -7,9 +7,10 @@ const handler = async argv => {
   console.log(info)
 }
 
-exports.handler = handler
-exports.desc = 'Print info about a database'
-exports.command = 'info'
-exports.builder = yargs => {
+const desc = 'Print info about a database'
+const command = 'info'
+const builder = yargs => {
   options(yargs)
 }
+
+export { handler, desc, command, builder }

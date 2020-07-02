@@ -1,7 +1,7 @@
-const CID = require('cids')
-const LRUStore = require('./lru')
+import LRUStore from './lru.js'
 
-module.exports = Block => {
+export default Block => {
+  const { CID } = Block
   class KVStore extends LRUStore {
     async graph (cid, depth = 1024, missing = new Set(), incomplete = new Set(), skips = new Set()) {
       const key = cid.toString('base32')
@@ -13,7 +13,7 @@ module.exports = Block => {
         return { missing }
       }
 
-      if (cid.codec === 'raw') return { complete: true }
+      if (cid.code === 0x55) return { complete: true }
 
       if (depth < 0) {
         incomplete.add(key)
@@ -45,7 +45,7 @@ module.exports = Block => {
     }
 
     async _indexLinks (cid, block) {
-      if (cid.codec === 'raw') return
+      if (cid.code === 0x55) return
       const key = cid.toString('base32')
       const ops = []
       const seen = new Set()

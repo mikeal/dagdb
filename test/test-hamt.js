@@ -1,8 +1,10 @@
 /* globals describe, it */
-const hamt = require('../src/hamt')
+import * as hamt from '../src/hamt.js'
+import Block from '@ipld/block/defaults.js'
+import assert from 'assert'
+
 const test = it
-const same = require('assert').deepStrictEqual
-const Block = require('@ipld/block')
+const same = assert.deepStrictEqual
 
 const missing = Block.encoder({ test: Math.random() }, 'dag-cbor')
 

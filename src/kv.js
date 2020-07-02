@@ -1,10 +1,11 @@
-const hamt = require('./hamt')
-const {
+import * as hamt from './hamt.js'
+import {
   NotFound, readonly, isCID,
   fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
-} = require('./utils')
-const valueLoader = require('./values')
+} from './utils.js'
+import valueLoader from './values.js'
+
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
 const createGet = (local, remote) => {
@@ -25,17 +26,19 @@ const createGet = (local, remote) => {
       return ret
     }
     // final cache check, useful under concurrent load
-    // istanbul ignore next
+    /* c8 ignore next */
     if (cache.has(key)) return cache.get(key)
     const block = await remote(cid)
     _cache(block)
+    /* c8 ignore next */
     return block
   }
   return get
 }
 
-module.exports = (Block) => {
+const create = (Block) => {
   const { encode, decode, register } = valueLoader(Block)
+  const { toString } = Block.multiformats.bytes
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
@@ -59,11 +62,12 @@ module.exports = (Block) => {
     // an important guard because it protects us from
     // inserting an empty transaction head when there
     // are other bugs
-    // istanbul ignore next
+    /* c8 ignore next */
     if (!last) throw new Error('nothing from hamt')
 
     const [head, ops, prev] = await Promise.all([last.cid(), Promise.all(opLinks), rootBlock.cid()])
     yield toBlock({ 'kv-v1': { head, ops, prev } }, 'Transaction')
+    /* c8 ignore next */
   }
 
   const isBlock = v => Block.isBlock(v)
@@ -157,7 +161,7 @@ module.exports = (Block) => {
         }
         const _iter = hamt.all(head, get)
         for await (let { key, value } of _iter) {
-          key = key.toString()
+          key = toString(key)
           if (!t.cache.has(key)) {
             if (opts.blocks) yield [key, await get(value)]
             else yield [key, value]
@@ -189,8 +193,10 @@ module.exports = (Block) => {
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
-      // istanbul ignore next
+      /* c8 ignore next */
       if (this.__get(key)) return this.__get(key)
+      // workaround, fixed in Node.js v14.5.0
+      /* c8 ignore next */
       return block
     }
 
@@ -231,7 +237,7 @@ module.exports = (Block) => {
         const { done } = await reader.next()
         if (done) return i
         i++
-      }
+      } /* c8 ignore next */
     }
 
     async commit () {
@@ -303,7 +309,7 @@ module.exports = (Block) => {
           // in the browser and not in some Node.js versions. This is easily
           // fixable below but it can't be tested effectively in Node.js
           // so we have to disable coverage until we have browser coverage working.
-          // istanbul ignore else
+          // c8 ignore else
           if (block) value.push(block)
           this.cache.set(key, value)
         }
@@ -384,8 +390,9 @@ module.exports = (Block) => {
       // TODO: cancel slower one
       if (common) return common
       else {
-        return (await Promise.all([old, latest])).filter(x => x)[0]
-      }
+        const r = (await Promise.all([old, latest])).filter(x => x)[0]
+        return r
+      }/* c8 ignore next */
     }
 
     const common = await race()
@@ -431,4 +438,6 @@ module.exports = (Block) => {
   exports.register = register
   return exports
 }
-module.exports.createGet = createGet
+
+create.createGet = createGet
+export default create

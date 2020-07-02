@@ -1,12 +1,18 @@
-const path = require('path')
-const dir = require('tmp').dirSync({ prefix: 'dagdb-tests-' }).name
-const _spawn = require('child_process').spawn
-const { stat } = require('fs').promises
+import path from 'path'
+import tmp from 'tmp'
+import { spawn as _spawn } from 'child_process'
+import { promises as fs } from 'fs'
+
+const { stat } = fs
+const dir = tmp.dirSync({ prefix: 'dagdb-tests-' }).name
+
+const concat = arr => Uint8Array.from([].concat(...arr.map(a => Array.from(a))))
+
 const spawn = (...args) => new Promise((resolve, reject) => {
   const handle = _spawn(...args)
   const stdout = []
   const stderr = []
-  const str = arr => Buffer.concat(arr).toString()
+  const str = arr => concat(arr).toString()
   handle.stdout.on('data', chunk => stdout.push(chunk))
   handle.stderr.on('data', chunk => stderr.push(chunk))
   handle.on('exit', code => {

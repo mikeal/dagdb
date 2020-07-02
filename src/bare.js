@@ -1,14 +1,17 @@
-const createDatabase = require('./database')
-const CID = require('cids')
-const bent = require('bent')
+import createDatabase from './database.js'
+import bent from 'bent'
+import createStores from './stores/index.js'
+import createUpdaters from './updaters/index.js'
+
 const getJSON = bent('json')
 
 const isHttp = id => id.startsWith('http://') || id.startsWith('https://')
 
-module.exports = (Block, ...args) => {
+export default (Block, ...args) => {
+  const { CID } = Block
   const database = createDatabase(Block)
-  const stores = require('./stores')(Block)
-  const updaters = require('./updaters')(Block)
+  const stores = createStores(Block)
+  const updaters = createUpdaters(Block)
   const getInfo = async (id, ...args) => {
     const info = await getJSON(id)
     if (!id.endsWith('/')) id += '/'
@@ -23,7 +26,7 @@ module.exports = (Block, ...args) => {
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
     }
-    throw new Error('Not implemented')
+    throw new Error('Not implemented') /* c8 ignore next */
   }
   const create = async (id, ...args) => {
     if (isHttp(id)) {
@@ -31,7 +34,7 @@ module.exports = (Block, ...args) => {
       if (info.root) throw new Error('Database already created')
       return database.create(store, updater, ...args)
     }
-    throw new Error('Not implemented')
+    throw new Error('Not implemented') /* c8 ignore next */
   }
   return { create, open }
 }

@@ -1,8 +1,12 @@
-const iamap = require('iamap')
-const { isCID } = require('./utils')
-const assert = require('assert')
-const murmurhash3 = require('murmurhash3js-revisited')
+import iamap from 'iamap'
+import assert from 'assert'
+import murmurhash3 from 'murmurhash3js-revisited'
+
+const cidSymbol = Symbol.for('@ipld/js-cid/CID')
+const isCID = node => !!(node && node[cidSymbol])
+
 function murmurHasher (key) {
+  // TODO: get rid of Buffer
   assert(Buffer.isBuffer(key))
   const b = Buffer.alloc(4)
   b.writeUInt32LE(murmurhash3.x86.hash32(key))
@@ -28,13 +32,14 @@ const transaction = async function * (head, ops, get, Block) {
   const load = mkload(get)
   let map = await iamap.load({ save, load, ...store }, head)
   for (const op of ops) {
-    /* istanbul ignore else */
     if (op.set) {
       map = await map.set(op.set.key, op.set.val)
     } else if (op.del) {
       map = await map.delete(op.del.key)
-    } else {
+    } /* c8 ignore next */ else {
+      /* c8 ignore next */
       throw new Error('Invalid operation')
+      /* c8 ignore next */
     }
   }
   // would be great to have a hamt API that took bulk operations
@@ -71,11 +76,8 @@ const all = (root, get) => {
   }
   return iter()
 }
+const bulk = transaction
+const _store = store
+const _noop = noop
 
-module.exports.all = all
-module.exports.bulk = transaction
-module.exports.empty = empty
-module.exports.get = get
-module.exports._store = store
-module.exports._noop = noop
-module.exports.has = has
+export { all, bulk, empty, get, _store, _noop, has }

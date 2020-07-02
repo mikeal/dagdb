@@ -1,7 +1,7 @@
-const bent = require('bent')
-const LRUStore = require('./lru')
+import bent from 'bent'
+import LRUStore from './lru.js'
 
-module.exports = Block => {
+export default Block => {
   class HttpsStore extends LRUStore {
     constructor (baseurl, opts) {
       super(opts)
@@ -44,7 +44,7 @@ module.exports = Block => {
     async _hasBlock (cid) {
       const resp = await this._head(this.mkurl(cid.toString('base32')))
       if (resp.statusCode === 200) return true
-      else return false
+      else return false /* c8 ignore next */
     }
 
     async graph (cid, depth) {

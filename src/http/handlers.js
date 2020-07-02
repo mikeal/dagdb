@@ -1,9 +1,9 @@
-const CID = require('cids')
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
 
-exports.blockstore = (Block, store) => {
+const blockstore = (Block, store) => {
+  const { CID } = Block
   const handler = async opts => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
@@ -34,10 +34,10 @@ exports.blockstore = (Block, store) => {
           block = await store.get(cid)
         } catch (e) {
           // we don't have intentional errors in our own cod
-          // istanbul ignore else
-          if (e.statusCode === 404) return { statusCode: 404 }
-          // istanbul ignore next
+          if (e.statusCode === 404) return { statusCode: 404 } /* c8 ignore next */
+          /* c8 ignore next */
           throw e
+          /* c8 ignore next */
         }
         const body = block.encodeUnsafe()
         return { headers: { 'content-length': body.length }, body }
@@ -46,9 +46,7 @@ exports.blockstore = (Block, store) => {
       if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
       const cid = new CID(path)
       const block = Block.create(body, cid)
-      if (!(await block.validate())) {
-        throw new Error('Block data does not match hash in CID')
-      }
+      await block.validate()
       await store.put(block)
       return { statusCode: 201 }
     } else if (method === 'HEAD') {
@@ -62,12 +60,12 @@ exports.blockstore = (Block, store) => {
       const e = new Error(`Unknown method "${method}"`)
       e.statusCode = 405
       throw e
-    }
+    } /* c8 ignore next */
   }
   return handler
 }
 
-exports.info = (store, updater, ext) => async opts => {
+const info = (store, updater, ext) => async opts => {
   const root = await updater.root
   const info = {
     root: root ? root.toString('base32') : root,
@@ -75,14 +73,18 @@ exports.info = (store, updater, ext) => async opts => {
   }
   if (updater.update) info.updater = 'updater'
   const body = Buffer.from(JSON.stringify({ ...info, ...ext }))
-  return { headers: jsonHeaders(body), body }
+  const ret = { headers: jsonHeaders(body), body }
+  return ret
 }
 
-exports.updater = updater => async opts => {
+const updater = (Block, updater) => async opts => {
+  const { CID } = Block
   if (!opts.params.new) throw new Error('Missing required param "new"')
   opts.params.new = new CID(opts.params.new)
   if (opts.params.old) opts.params.old = new CID(opts.params.old)
   const cid = await updater.update(opts.params.new, opts.params.old)
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
-  return { headers: jsonHeaders(body), body }
+  const ret = { headers: jsonHeaders(body), body }
+  return ret
 }
+export { blockstore, info, updater }

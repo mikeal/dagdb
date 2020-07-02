@@ -1,5 +1,5 @@
-const { validate, chain } = require('./utils')
-const hamt = require('./hamt')
+import { validate, chain } from './utils.js'
+import * as hamt from './hamt.js'
 
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only
@@ -16,7 +16,8 @@ const lazyprop = (obj, name, fn) => {
   Object.defineProperty(obj, name, { get })
 }
 
-module.exports = (Block, fromBlock, kv) => {
+export default (Block, fromBlock, kv) => {
+  const { toString } = Block.multiformats.bytes
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
   const emptyHamt = hamt.empty(Block, 'dag-cbor')
 
@@ -24,7 +25,8 @@ module.exports = (Block, fromBlock, kv) => {
   const exports = {}
 
   const updatePropIndex = async function * (prop, ops) {
-    // istanbul ignore next // dev-only guard
+    // dev-only guard
+    /* c8 ignore next */
     if (prop.updated) throw new Error('Index has already been updated')
     prop.updated = true
     const root = await prop.rootData
@@ -159,7 +161,7 @@ module.exports = (Block, fromBlock, kv) => {
       const index = await p
       const prop = index.name
       for await (let { key, value } of index.entries()) {
-        key = key.toString()
+        key = toString(key)
         let kv
         let link
         if (opts.uniqueSources) {

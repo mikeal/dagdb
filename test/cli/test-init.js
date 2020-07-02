@@ -1,5 +1,5 @@
-const tap = require('tap')
-const { init } = require('./utils')
+import tap from 'tap'
+import { init } from './utils.js'
 
 tap.test('basic init', async t => {
   const { run, dbfile, initOutput } = await init()

@@ -1,8 +1,9 @@
-const { readonly, isCID, validate } = require('./utils')
-const createFBL = require('@ipld/fbl/bare')
+import { readonly, isCID, validate } from './utils.js'
+import createFBL from '@ipld/fbl/bare.js'
+
 const types = {}
 
-module.exports = (Block) => {
+export default (Block) => {
   const fbl = createFBL(Block, 'dag-cbor')
 
   const fblDecoder = (root, store) => {
@@ -19,7 +20,7 @@ module.exports = (Block) => {
     for await (const block of gen) {
       // testing these guards would require an implementation w/ a schema
       // for a bad implementation, which would be bad to ship with.
-      // istanbul ignore next
+      /* c8 ignore next */
       if (last) throw new Error('Encoder yield after non-block')
       if (Block.isBlock(block)) {
         yield block
@@ -27,7 +28,7 @@ module.exports = (Block) => {
       }
       last = block
     }
-    // istanbul ignore next
+    /* c8 ignore next */
     if (typeof last === 'undefined') throw new Error('Encoder did not yield a root node')
     set(last)
   }

@@ -1,11 +1,15 @@
 /* globals it, describe, before, after */
-const Block = require('@ipld/block')
-const inmem = require('../src/stores/inmemory')
-const kv = require('../src/kv')(Block)
+import Block from '@ipld/block/defaults.js'
+import createInmemory from '../src/stores/inmemory.js'
+import createKV from '../src/kv.js'
+import assert from 'assert'
+import bent from 'bent'
+
+const inmem = createInmemory(Block)
+const kv = createKV(Block)
 const test = it
-const assert = require('assert')
 const same = assert.deepStrictEqual
-const bent = require('bent')
+const { createGet } = createKV
 
 const create = async (_kv = kv) => {
   const store = inmem()
@@ -26,7 +30,6 @@ const basics = async kv => {
 
 describe('test-errors', () => {
   test('createGet CID check', async () => {
-    const { createGet } = require('../src/kv')
     const get = createGet()
     let threw = true
     try {
@@ -102,7 +105,7 @@ describe('test-errors', () => {
     describe('http', () => {
       const store = inmem()
       test('http storage handler', async () => {
-        const handler = require('../src/http/handlers').blockstore(Block, store)
+        const handler = (await import('../src/http/handlers.js')).blockstore(Block, store)
         const getError = async (...args) => {
           try {
             await handler(...args)
@@ -127,7 +130,7 @@ describe('test-errors', () => {
         e = await getError({ method: 'PUT', path: '/cid/nope', body: Buffer.from('') })
         same(e.message, 'Path for block writes must not include slashes')
         e = await getError({ method: 'PUT', path: `/${missingKey}`, body: Buffer.from('adsf') })
-        same(e.message, 'Block data does not match hash in CID')
+        same(e.message, 'Buffer does not match hash')
         e = await getError({ method: 'HEAD', path: '/cid/nope' })
         same(e.message, 'Path for block retreival must not include slashes')
         e = await getError({ method: 'OPTIONS', path: '/test' })
@@ -140,14 +143,19 @@ describe('test-errors', () => {
       })
       const getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
       const port = getPort()
-      const handler = require('../src/http/nodejs').blockstore(Block, store)
-      const server = require('http').createServer(handler)
-      const closed = new Promise(resolve => server.once('close', resolve))
+      let handler
+      let server
+      let closed
 
       before(() => new Promise((resolve, reject) => {
-        server.listen(port, e => {
-          if (e) return reject(e)
-          resolve()
+        return (new Promise(resolve => resolve())).then(async () => {
+          handler = (await import('../src/http/nodejs.js')).default.blockstore(Block, store)
+          server = (await import('http')).createServer(handler)
+          closed = new Promise(resolve => server.once('close', resolve))
+          server.listen(port, e => {
+            if (e) return reject(e)
+            resolve()
+          })
         })
       }))
 

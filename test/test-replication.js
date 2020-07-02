@@ -1,9 +1,12 @@
 /* globals describe, it */
-const Block = require('@ipld/block')
-const inmem = require('../src/stores/inmemory')
-const kv = require('../src/kv')(Block)
+import Block from '@ipld/block/defaults.js'
+import createInmemory from '../src/stores/inmemory.js'
+import createKV from '../src/kv.js'
+import assert from 'assert'
+
+const inmem = createInmemory(Block)
+const kv = createKV(Block)
 const test = it
-const assert = require('assert')
 const same = assert.deepStrictEqual
 
 const create = async (_kv = kv) => {

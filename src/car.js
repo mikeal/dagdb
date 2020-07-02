@@ -1,9 +1,12 @@
-const { stat, rename } = require('fs').promises
-const carfile = require('datastore-car')
-const inmem = require('./stores/inmemory')
-const Block = require('@ipld/block')
-const database = require('./database')(Block)
-const path = require('path')
+import { promises as fs } from 'fs'
+import carfile from 'datastore-car'
+import createInmemory from './stores/inmemory.js'
+import Block from '@ipld/block/defaults.js'
+import mkdatabase from './database.js'
+import path from 'path'
+
+const database = mkdatabase(Block)
+const { stat, rename } = fs
 
 const getRoot = async car => {
   const [root, ...nope] = await car.getRoots()
@@ -23,9 +26,7 @@ const loadReadOnly = async filename => {
 const loadWritable = async filename => {
 }
 
-exports.loadReadOnly = loadReadOnly
-exports.loadWritable = loadWritable
-exports.options = yargs => {
+const options = yargs => {
   yargs.option('dbfile', {
     desc: 'File containing the database',
     default: '.dagdb.car'
@@ -62,6 +63,7 @@ const traverse = async function * (cid, get, seen = new Set()) {
 const readwrite = async (filename, exportFile) => {
   await checkfile(filename)
   const reader = await loadReadOnly(filename)
+  const inmem = createInmemory(Block)
   const cache = inmem()
   const put = cache.put.bind(cache)
   const get = async cid => {
@@ -90,6 +92,4 @@ const readwrite = async (filename, exportFile) => {
   return { write, root, store }
 }
 
-exports.checkfile = checkfile
-exports.readwrite = readwrite
-exports.readonly = loadReadOnly
+export { loadReadOnly, loadWritable, options, checkfile, readwrite }

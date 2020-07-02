@@ -1,6 +1,10 @@
-const Block = require('@ipld/block')
-const KVStore = require('../../src/stores/kv')(Block)
-const { encode, decode } = require('charwise')
+import Block from '@ipld/block/defaults.js'
+import createStore from '../../src/stores/kv.js'
+import charwise from 'charwise'
+
+const { encode, decode } = charwise
+
+const KVStore = createStore(Block)
 
 class NotFound extends Error {
   get statusCode () {
@@ -45,4 +49,4 @@ class InMemoryStore extends KVStore {
   }
 }
 
-module.exports = (...args) => new InMemoryStore(...args)
+export default (...args) => new InMemoryStore(...args)

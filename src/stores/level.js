@@ -1,9 +1,9 @@
-const createKV = require('./kv')
-const levelup = require('levelup')
-const encoding = require('encoding-down')
-const charwise = require('charwise')
-const { Buffer } = require('buffer')
-const empty = Buffer.from('')
+import createKV from './kv.js'
+import levelup from 'levelup'
+import encoding from 'encoding-down'
+import charwise from 'charwise'
+
+const empty = new Uint8Array(0)
 
 const ls = (lev, gt, lt) => new Promise((resolve, reject) => {
   // for some reason you can't convert the level
@@ -21,7 +21,7 @@ const lsIter = async function * (lev, gt, lt) {
   yield * keys
 }
 
-module.exports = Block => {
+export default Block => {
   const KVStore = createKV(Block)
   class LevelStore extends KVStore {
     constructor (leveldown, opts = {}, ...args) {
@@ -47,10 +47,11 @@ module.exports = Block => {
       try {
         resp = await this.lev.get(this._mkey(arr))
       } catch (e) {
-        // istanbul ignore else
-        if (e.status === 404) return false
-        // istanbul ignore next
+        /* c8 ignore next */
+        if (e.status === 404) return false /* c8 ignore next */
+        /* c8 ignore next */
         throw e
+        /* c8 ignore next */
       }
       return { length: resp.length }
     }
@@ -61,7 +62,7 @@ module.exports = Block => {
       } catch (e) {
         e.statusCode = e.status
         throw e
-      }
+      } /* c8 ignore next */
     }
 
     _linksFrom (key) {
