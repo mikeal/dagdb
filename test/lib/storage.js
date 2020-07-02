@@ -280,7 +280,7 @@ const replicateTests = create => {
       same(count, 0)
       assert.ok(!complete && !missing && incomplete)
       same(incomplete.size, 1)
-    })
+    }).timeout(9000)
     test(`missing leaf, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -292,7 +292,7 @@ const replicateTests = create => {
       same(count, 0)
       assert.ok(!complete && !missing && incomplete)
       same(incomplete.size, 2)
-    })
+    }).timeout(9000)
     test(`missing leaf, depth 1${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -304,7 +304,7 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
-    })
+    }).timeout(9000)
     test(`missing leaf, depth 2${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -316,7 +316,7 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
-    })
+    }).timeout(9000)
     test(`missing branch, depth -1${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -328,7 +328,7 @@ const replicateTests = create => {
       assert.ok(!complete && !missing && incomplete)
       same(count, 0)
       same(incomplete.size, 1)
-    })
+    }).timeout(9000)
     test(`missing branch, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -345,7 +345,7 @@ const replicateTests = create => {
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
       same(incomplete.size, 1)
-    })
+    }).timeout(9000)
     test(`missing branch, depth 1${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -357,7 +357,7 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(await branch.cid()))
-    })
+    }).timeout(9000)
     test(`missing branch, depth 2${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -369,7 +369,7 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
-    })
+    }).timeout(9000)
     test(`missing root, depth -1${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -381,7 +381,7 @@ const replicateTests = create => {
       assert.ok(!complete && missing && !incomplete)
       same(count, 0)
       same(missing.size, 1)
-    })
+    }).timeout(9000)
     test(`missing root, depth 0${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -402,7 +402,7 @@ const replicateTests = create => {
       assert.ok(!complete && !missing && incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
-    })
+    }).timeout(9000)
     test(`missing root, depth 1${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -416,7 +416,7 @@ const replicateTests = create => {
       // always return that the traversal is complete because you literally
       // asked for nothing.
       assert.ok(complete && !missing && !incomplete)
-    })
+    }).timeout(9000)
     test(`missing root, depth 2${s}`, async () => {
       const _to = await fixtures.rawCommonLeaf()
       const _from = await fixtures.rawCommonLeaf()
@@ -433,7 +433,7 @@ const replicateTests = create => {
       assert.ok(complete && !missing && !incomplete)
       same(count, skip ? 0 : 1)
       if (!skip) assert.ok(puts[0].equals(cid))
-    })
+    }).timeout(9000)
     if (!skip) depthTests(true)
   }
   depthTests()
@@ -445,14 +445,14 @@ const replicateTests = create => {
     same(count, 1)
     same(incomplete.size, 1)
     assert.ok(incomplete.has((await blocks[0].cid()).toString('base32')))
-  })
+  }).timeout(9000)
   test('depth 1', async () => {
     const blocks = await fixtures.commonBranches()
     const { complete, missing, incomplete, count } = await basicTest(blocks, [], 1)
     assert.ok(!complete && !missing && incomplete)
     same(count, 3)
     same(incomplete.size, 2)
-  })
+  }).timeout(9000)
   test('missing leaf', async () => {
     const blocks = await fixtures.commonBranches()
     blocks.pop()
@@ -460,7 +460,7 @@ const replicateTests = create => {
     assert.ok(!complete && missing && !incomplete)
     same(count, 0)
     same(missing.size, 1)
-  })
+  }).timeout(9000)
   test('depth 0, missing leaf', async () => {
     const blocks = await fixtures.commonBranches()
     blocks.pop()
@@ -468,7 +468,7 @@ const replicateTests = create => {
     assert.ok(!complete && !missing && incomplete)
     same(count, 0)
     same(incomplete.size, 2)
-  })
+  }).timeout(9000)
   test('depth 1, missing leaf', async () => {
     const blocks = await fixtures.commonBranches()
     blocks.pop()
@@ -476,7 +476,7 @@ const replicateTests = create => {
     assert.ok(!complete && missing && !incomplete)
     same(count, 0)
     same(missing.size, 1)
-  })
+  }).timeout(9000)
   test('depth -1, missing leaf', async () => {
     const blocks = await fixtures.commonBranches()
     blocks.pop()
