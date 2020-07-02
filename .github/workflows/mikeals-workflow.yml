@@ -35,12 +35,16 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
     - uses: actions/checkout@v2
+    - name: Use Node.js 14.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 14.x
     - name: Cache node_modules
       id: cache-modules
       uses: actions/cache@v1
       with:
         path: node_modules
-        key: 12.x-${{ runner.OS }}-build-${{ hashFiles('package.json') }}
+        key: 14.x-${{ runner.OS }}-build-${{ hashFiles('package.json') }}
     - name: Build
       if: steps.cache-modules.outputs.cache-hit != 'true'
       run: npm install
