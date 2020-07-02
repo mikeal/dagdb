@@ -51,7 +51,7 @@
     "charwise": "^3.0.1",
     "datastore-car": "^1.2.0",
     "encoding-down": "^6.3.0",
-    "iamap": "^0.7.0",
+    "iamap": "mikeal/iamap#uint8array",
     "level-js": "^5.0.2",
     "levelup": "^4.4.0",
     "lru-cache": "^5.1.1",
