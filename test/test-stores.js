@@ -102,7 +102,7 @@ describe('test-stores', () => {
       describe('test-store kv replicate', () => {
         replicateTests(create)
       })
-    }).timeout( 60 * 1000 )
+    }).timeout(60 * 1000)
   })
 
   describe('s3', () => {
@@ -133,7 +133,7 @@ describe('test-stores', () => {
       describe('test-store s3 replicate', () => {
         replicateTests(create)
       })
-    }).timeout( 60 * 1000 )
+    }).timeout(60 * 1000)
   })
 
   describe('level', () => {
@@ -155,7 +155,7 @@ describe('test-stores', () => {
       describe('test-stores level replicate', () => {
         replicateTests(create)
       })
-    }).timeout( 60 * 1000 )
+    }).timeout(60 * 1000)
   })
 
   describe('errors', () => {
@@ -229,7 +229,7 @@ describe('test-stores', () => {
           server.close()
           return closed
         })
-      }).timeout( 60 * 1000 )
+      }).timeout(60 * 1000)
     })
     describe('http no params', () => {
       const port = getPort()
@@ -309,7 +309,7 @@ describe('test-stores', () => {
         describe('test-store idb replicate', () => {
           replicateTests(create)
         })
-      }).timeout( 60 * 1000 )
+      }).timeout(60 * 1000)
     })
   }
 })

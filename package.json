@@ -12,7 +12,7 @@
     "test:node": "mocha test/test-*.js",
     "test:browser": "polendina --cleanup test/test-*.js",
     "test:cli": "tap test/cli/test-*.js",
-    "test:no-coverage": "npm run lint && mocha test/test-*.js && npm run test:browser",
+    "test:no-coverage": "npm run lint && npm run test:node && npm run test:browser",
     "test": "hundreds mocha test/test-*.js && npm run test:browser",
     "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
     "build:schema": "ipld-schema to-json Schema.md > src/schema/schema.json"
