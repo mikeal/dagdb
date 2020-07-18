@@ -26,11 +26,8 @@ const loadReadOnly = async filename => {
 const loadWritable = async filename => {
 }
 
-const options = yargs => {
-  yargs.option('dbfile', {
-    desc: 'File containing the database',
-    default: '.dagdb.car'
-  })
+const options = {
+  dbfile: { desc: 'File containing the database', default: '.dagdb.car' }
 }
 const checkfile = async file => {
   let exists

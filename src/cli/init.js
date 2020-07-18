@@ -36,6 +36,5 @@ const init = async argv => {
 const handler = init
 const desc = 'Create initial db file'
 const command = 'init'
-const builder = options
 
-export { handler, desc, command, builder }
+export { handler, desc, command, options }

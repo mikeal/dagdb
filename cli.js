@@ -1,11 +1,4 @@
 #!/usr/bin/env node
-import yargs from 'yargs'
+import tree from './src/cli/tree.js'
 
-const args = yargs
-  .commandDir('./src/cli')
-  .demandCommand()
-  .argv
-
-if (!args._.length && !args.filename) {
-  yargs.showHelp()
-}
+tree(process.argv.slice(2))
