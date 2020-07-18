@@ -21,7 +21,7 @@ export default schema => {
     argv = [...argv]
     const args = { args: [], _schema: schema, _required: required }
     for (const [key, value] of Object.entries(schema)) {
-      console.log({key, value})
+      console.log({ key, value })
       if (value && typeof value === 'object' && typeof value.default !== 'undefined') {
         args[key] = value.default
       }
