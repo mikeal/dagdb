@@ -2,13 +2,11 @@ import * as hamt from './hamt.js'
 import schema from 'dagdb/schema'
 import createValidate from '@ipld/schema-validation'
 
-const isCID = node => !!(node && node[cidSymbol])
+const isCID = node => node.asCID === node
 const validate = createValidate(schema)
 
 const fromBlock = (block, className) => validate(block.decode(), className)
 const fromBlockUnsafe = (block, className) => validate(block.decodeUnsafe(), className)
-
-const cidSymbol = Symbol.for('@ipld/js-cid/CID')
 
 const readonly = (source, key, value) => {
   Object.defineProperty(source, key, { value, writable: false })

@@ -2,8 +2,7 @@ import iamap from 'iamap'
 import assert from 'assert'
 import murmurhash3 from 'murmurhash3js-revisited'
 
-const cidSymbol = Symbol.for('@ipld/js-cid/CID')
-const isCID = node => !!(node && node[cidSymbol])
+const isCID = node => node.asCID === node
 
 function murmurHasher (key) {
   // TODO: get rid of Buffer
