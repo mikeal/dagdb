@@ -45,7 +45,7 @@
     }
   },
   "dependencies": {
-    "@ipld/block": "^5.1.1",
+    "@ipld/block": "^6.0.1",
     "@ipld/fbl": "1.0.1",
     "@ipld/schema-validation": "1.0.1",
     "bent": "^7.3.7",
@@ -55,19 +55,19 @@
     "iamap": "mikeal/iamap#uint8array",
     "level-js": "^5.0.2",
     "levelup": "^4.4.0",
-    "lru-cache": "^5.1.1",
+    "lru-cache": "^6.0.0",
     "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {
     "aws-config": "^1.4.0",
-    "aws-sdk": "^2.707.0",
+    "aws-sdk": "^2.719.0",
     "hundreds": "0.0.7",
     "ipld-schema": "^0.3.2",
     "memdown": "^5.1.0",
     "mocha": "^8.0.1",
     "polendina": "^1.0.0",
     "standard": "^14.3.4",
-    "tap": "^14.10.7",
+    "tap": "^14.10.8",
     "vuepress": "^1.5.2"
   }
 }
