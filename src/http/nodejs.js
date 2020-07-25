@@ -24,7 +24,7 @@ const handler = async (req, res, _handler) => {
   const [method, path] = [req.method, parsed.pathname]
   const result = await _handler({ method, path, params, body })
   res.writeHead(result.statusCode || 200, result.headers || {})
-  res.end(result.body)
+  res.end(result.body ? Buffer.from(result.body) : undefined)
 }
 
 const createHandler = (Block, store, _updater, infoOpts = {}) => {
