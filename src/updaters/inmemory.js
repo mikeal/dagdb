@@ -6,6 +6,6 @@ export default CID => {
       else if (current.equals(old)) current = _current
       return current
     },
-    getRoot: () => current
+    root: current
   }
 }

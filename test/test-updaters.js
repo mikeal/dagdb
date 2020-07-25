@@ -13,7 +13,6 @@ describe('inmem', () => {
     same(await db.get('hello'), 'world')
     db = await dagdb.open({ ...db, root: db.root })
     same(await db.get('hello'), 'world')
-    same(db.root, await db.updater.getRoot())
 
     db = await dagdb.open({ ...db, root: oldcid })
     await db.set('hello', 'world')
