@@ -37,6 +37,7 @@ export default (Block) => {
       readonly(this, '_kv', this.getRoot().then(r => kv(r['db-v1'].kv, store)))
       this.remotes = new Remotes(this)
       this.indexes = new Indexes(this)
+      this.Block = Block
     }
 
     get _dagdb () {
