@@ -5,7 +5,10 @@ import createUpdaters from './updaters/index.js'
 
 const getJSON = bent('json')
 
-const isHttp = id => id.startsWith('http://') || id.startsWith('https://')
+const isHttp = id => {
+  if (typeof id !== 'string') return false
+  return id.startsWith('http://') || id.startsWith('https://')
+}
 
 export default (Block, ...args) => {
   const { CID } = Block
@@ -25,6 +28,9 @@ export default (Block, ...args) => {
       const { info, store, updater } = await getInfo(id, ...args)
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
+    } else if (typeof id === 'object') {
+      const { root, store, updater } = id
+      return database(root, store, updater, ...args)
     }
     throw new Error('Not implemented') /* c8 ignore next */
   }
@@ -33,8 +39,11 @@ export default (Block, ...args) => {
       const { info, store, updater } = await getInfo(id, ...args)
       if (info.root) throw new Error('Database already created')
       return database.create(store, updater, ...args)
-    }
-    throw new Error('Not implemented') /* c8 ignore next */
+    } else {
+      const store = await stores.create(id, ...args)
+      const updater = await updaters.create(id, ...args)
+      return database.create(store, updater, ...args)
+    } /* c8 ignore next */
   }
   return { create, open }
 }

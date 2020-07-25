@@ -1,5 +1,6 @@
 import bent from 'bent'
 import createKVUpdater from './kv.js'
+import inmemoryUpdater from './inmemory.js'
 
 const getJSON = bent('json')
 
@@ -34,5 +35,11 @@ export default Block => {
     }
     throw new Error(`Unsupported identifier "${id}"`) /* c8 ignore next */
   }
-  return { from, kv: createKVUpdater(CID) }
+  const create = async (id, ...args) => {
+    if (id === 'inmem' || id === 'inmemory') {
+      return inmemoryUpdater(CID)
+    }
+    throw new Error('Not implemented') /* c8 ignore next */
+  }
+  return { from, kv: createKVUpdater(CID), create }
 }

@@ -42,6 +42,9 @@
       "require": "./src/schema/schema.cjs",
       "browser": "./src/schema/index.js",
       "import": "./src/schema/schema.mjs"
+    },
+    "./server.js": {
+      "import": "./src/http/nodejs.js"
     }
   },
   "dependencies": {
