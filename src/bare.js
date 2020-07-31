@@ -29,7 +29,12 @@ export default (Block, ...args) => {
       if (!info.root) throw new Error('Database has not been created')
       return database(new CID(info.root), store, updater, ...args)
     } else if (typeof id === 'object') {
-      const { root, store, updater } = id
+      let { root, store, updater } = id
+      if (id.leveldown) {
+        store = await stores.from(id, ...args)
+        updater = await updaters.kv(store)
+        root = await updater.root
+      }
       return database(root, store, updater, ...args)
     }
     throw new Error('Not implemented') /* c8 ignore next */

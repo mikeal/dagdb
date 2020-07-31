@@ -7,8 +7,12 @@ export default Block => {
   const inmem = createInmemory(Block)
   const level = createLevel(Block)
   const from = id => {
-    if (id.startsWith('http://') || /* c8 ignore next */ id.startsWith('https://')) {
-      return http(id)
+    if (typeof id === 'object') {
+      if (id.leveldown) return level(id.leveldown)
+    } else {
+      if (id.startsWith('http://') || /* c8 ignore next */ id.startsWith('https://')) {
+        return http(id)
+      }
     }
     throw new Error(`Cannot resolve identifier "${id}"`)
   }

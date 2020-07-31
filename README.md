@@ -33,8 +33,8 @@ const db = await dagdb.create('inmem') /* 'inmemory' also works */
 
 ### Create a database from a leveldown interface.
 
-This allows you to store
-DagDB data in a [wide variety of storage backends](https://nicedoc.io/Level/awesome#stores).
+This allows you to store DagDB data in a
+[wide variety of storage backends](https://nicedoc.io/Level/awesome#stores).
 
 ```js
 import memdown from 'memdown'
@@ -47,4 +47,22 @@ const db = await dagdb.create({ leveldown })
 
 ```js
 const db = await dagdb.create('http://website.com/dbname')
+```
+
+## Opening a Database
+
+### Opening a remote database
+
+```js
+import dagdb from 'dagdb'
+
+const db = await dagdb.open('http://website.com/dbname')
+```
+
+### Opening a leveldown database
+
+```js
+import redisdown from 'redisdown' // Redis storage backend
+
+const db = await dagdb.open({ leveldown: redisdown('location') })
 ```
