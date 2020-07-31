@@ -9,8 +9,7 @@ const updateTests = create => {
   test('basics', async () => {
     let db = await create()
     const oldcid = db.root
-    await db.set('hello', 'world')
-    db = await db.update()
+    db = await db.set('hello', 'world').update()
     same(await db.get('hello'), 'world')
     db = await dagdb.open({ ...db, root: db.root })
     same(await db.get('hello'), 'world')

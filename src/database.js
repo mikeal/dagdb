@@ -18,6 +18,11 @@ const databaseEncoder = async function * (db) {
   yield db.root
 }
 
+const decorateUpdate = (db, p) => {
+  p.update = () => p.then(() => db.update())
+  return p
+}
+
 export default (Block) => {
   const { CID } = Block
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
@@ -77,14 +82,22 @@ export default (Block) => {
       return kv.get(...args)
     }
 
-    async set (...args) {
+    async _set (...args) {
       const kv = await this._kv
       return kv.set(...args)
     }
 
-    async del (...args) {
+    set (...args) {
+      return decorateUpdate(this, this._set(...args))
+    }
+
+    async _del (...args) {
       const kv = await this._kv
       return kv.del(...args)
+    }
+
+    del (...args) {
+      return decorateUpdate(this, this._del(...args))
     }
 
     async link (...args) {
