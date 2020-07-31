@@ -66,3 +66,146 @@ import redisdown from 'redisdown' // Redis storage backend
 
 const db = await dagdb.open({ leveldown: redisdown('location') })
 ```
+
+## Key Value Storage
+
+DagDB's primary storage system is a simple key-value store. Keys
+can be any string, and values can be almost anything.
+
+For instance, all JSON types are natively supported as values.
+
+```js
+let db = dagdb.create('inmem')
+await db.set('hello', 'world')
+console.log(await db.get('hello'))
+// prints 'world'
+```
+
+As you can see, you can set and get values immediately. Something to
+note about this example is that, while the `"hello"` key is available,
+it is actually coming out of a staging area that has not yet been committed
+to the database.
+
+Every instance of `DagDB` is bound to an **immutable** database state.
+We then add, remove, or change keys in that database until finally
+updating it, which will return us a ***new*** `DagDB` instance
+for the newly updated immutable state.
+
+```js
+let db = dagdb.create('inmem')
+await db.set('hello', 'world')
+db = await db.update()
+console.log(await db.get('hello'))
+// prints 'world'
+```
+
+Now that we know how to set values and update the database lets work
+with some more advanced values.
+
+```js
+const now = new Date()
+await db.set('big-value', {
+  name: 'Mikeal Rogers',
+  created: {
+    year: now.getYear(),
+    month: now.getMonth(),
+    day: now.getDay()
+  },
+  hobbies: [ 'code', 'food', 'tea' ]
+})
+```
+
+As you can see, we can use all JSON types and there's no limit to how far we
+can nest values inside of objects. In addition to JSON types we support efficient
+binary serialization, so you can use `Uint8Array` for any binary you have.
+
+### Links
+
+So far we haven't shown you anything you can't do with any other key-value store.
+Now let's look at some features unique to DagDB and the primitives it's built on.
+
+```js
+const link = await db.link({ name: 'Earth', size: 3958.8 })
+await db.set('mikeal', { name: 'Mikeal Rogers', planet: link })
+await db.set('chris', { name: 'Chris Hafey', planet: link })
+db = db.update()
+
+const howBigIsYourPlanet = async key => {
+  const person = await db.get(key)
+  const planet = await person.planet()
+  console.log(`${person.name} lives on a planet w/ a radius of ${planet.size}mi`)
+}
+await howBigIsYourPlanet('mikeal')
+// prints "Mikeal Rogers lives on a planet w/ a radius of 3958.8mi"
+await howBigIsYourPlanet('chris')
+// prints "Chris Hafey lives on a planet w/ a radius of 3958.8mi"
+```
+
+Pretty cool!
+
+As you can see, link values are decoded by DagDB as async functions that will
+return the decoded value from the database.
+
+The great thing about links is that the data is de-duplicated across the database.
+DagDB uses a technique called "content addressing" that links data by hashing the
+value. This means that, even if you create the link again with the same data, the
+link will be the same and the data will be deduplicated.
+
+You can also compare links in order to tell if they refer to the same data.
+
+```js
+const link1 = await db.link({ name: 'Earth', size: 3958.8 })
+const link2 = await db.link({ name: 'Earth', size: 3958.8 })
+console.log(link1.equals(link2))
+// prints true
+
+const samePlanet = async (key1, key2) => {
+  const person1 = await db.get(key1)
+  const person2 = await db.get(key2)
+  if (person1.planet.equals(person2.planet)) {
+    console.log(`${person1.name} is on the same planet as ${person2.name}`)
+  } else {
+    console.log(`${person1.name} is not on the same planet as ${person2.name}`)
+  }
+}
+samePlanet('mikeal', 'chris')
+// prints "Mikeal Rogesr is on the same planet as Chris Hafey"
+```
+
+As you can see, links are more than addresses, they are useful values for comparison.
+
+There's no limit to the number of links and the depth at which you nest your values.
+Most importantly, you can use linked data in any other value with zero copy overhead,
+it's just a simple small update to the link value.
+
+### Streams
+
+Since it is often problematic to store large amounts of binary as a single value, DagDB
+also natively supports storing streams of binary data.
+
+DagDB treats **any async generator** as a binary stream. Node.js Streams are valid
+async generators so they work right away.
+
+```js
+import { createReadStream } from 'fs'
+
+const reader = createReadStream('/path/to/file')
+
+await db.set('my file', { file: reader })
+db = await db.update()
+
+const printFile = async (key, property) => {
+  const value = await db.get(key)
+  for await (const chunk of value[property]) {
+    process.stdout.write(chunk)
+  }
+}
+printFile('my file', 'file')
+```
+
+Note that, while you can use any Stream interface that is a valid async generator (like Node.js
+Streams) to store the data, when you retieve the stream it will be returned as a common async
+generator (not a Node.js Stream).
+
+### Nesting Databases
+
