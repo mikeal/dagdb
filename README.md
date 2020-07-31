@@ -78,7 +78,7 @@ For instance, all JSON types are natively supported as values.
 let db = dagdb.create('inmem')
 await db.set('hello', 'world')
 console.log(await db.get('hello'))
-// prints 'world'
+// prints "world"
 ```
 
 As you can see, you can set and get values immediately. Something to
@@ -96,7 +96,7 @@ let db = dagdb.create('inmem')
 await db.set('hello', 'world')
 db = await db.update()
 console.log(await db.get('hello'))
-// prints 'world'
+// prints "world"
 ```
 
 Now that we know how to set values and update the database lets work
@@ -169,7 +169,7 @@ const samePlanet = async (key1, key2) => {
   }
 }
 samePlanet('mikeal', 'chris')
-// prints "Mikeal Rogesr is on the same planet as Chris Hafey"
+// prints "Mikeal Rogers is on the same planet as Chris Hafey"
 ```
 
 As you can see, links are more than addresses, they are useful values for comparison.
@@ -191,8 +191,7 @@ import { createReadStream } from 'fs'
 
 const reader = createReadStream('/path/to/file')
 
-await db.set('my file', { file: reader })
-db = await db.update()
+db = await db.set('my file', { file: reader }).update()
 
 const printFile = async (key, property) => {
   const value = await db.get(key)
@@ -207,5 +206,29 @@ Note that, while you can use any Stream interface that is a valid async generato
 Streams) to store the data, when you retieve the stream it will be returned as a common async
 generator (not a Node.js Stream).
 
+The size of every chunk in the stream is preserved. However, *this may change in the future*.
+Some transports have issues with block sizes larger than 1mb so we may change the defaults
+in the future to keep each chunk below 1mb.
+
 ### Nesting Databases
+
+Another really cool think you can do is use DagDB's as values in other databases.
+
+```js
+let db1 = await dagdb.create('inmem')
+let db2 = await dagdb.create('inmem')
+
+db1 = await db1.set('hello', 'world').update()
+db2 = await db2.set('db1', db1).update()
+
+const db = await db2.get('db1')
+console.log(await db.get('hello'))
+// prints "world"
+```
+
+This feature uses a very flexible system that can be extended in the future to feature
+all kinds of new data types.
+
+## Replication
+
 
