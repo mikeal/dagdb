@@ -40,8 +40,15 @@ export default (Block, ...args) => {
       if (info.root) throw new Error('Database already created')
       return database.create(store, updater, ...args)
     } else {
-      const store = await stores.create(id, ...args)
-      const updater = await updaters.create(id, ...args)
+      let store
+      let updater
+      if (id.leveldown) {
+        store = await stores.create(id, ...args)
+        updater = await updaters.kv(store)
+      } else {
+        store = await stores.create(id, ...args)
+        updater = await updaters.create(id, ...args)
+      }
       return database.create(store, updater, ...args)
     } /* c8 ignore next */
   }

@@ -1,19 +1,20 @@
 /* globals describe, it */
 import dagdb from '../src/index.js'
+import memdown from 'memdown'
 import { deepStrictEqual as same, ok } from 'assert'
 
 const test = it
 
-describe('inmem', () => {
+const updateTests = create => {
   test('basics', async () => {
-    let db = await dagdb.create('inmem')
+    let db = await create()
     const oldcid = db.root
     await db.set('hello', 'world')
     db = await db.update()
     same(await db.get('hello'), 'world')
     db = await dagdb.open({ ...db, root: db.root })
     same(await db.get('hello'), 'world')
-    same(db.root, db.updater.root)
+    same(db.root, await db.updater.root)
 
     db = await dagdb.open({ ...db, root: oldcid })
     await db.set('hello', 'world')
@@ -33,4 +34,12 @@ describe('inmem', () => {
     }
     ok(threw)
   })
+}
+
+describe('inmem', () => {
+  updateTests(() => dagdb.create('inmem'))
+})
+
+describe('memdown', () => {
+  updateTests(() => dagdb.create({ leveldown: memdown(Math.random().toString()) }))
 })

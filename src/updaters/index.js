@@ -41,5 +41,5 @@ export default Block => {
     }
     throw new Error('Not implemented') /* c8 ignore next */
   }
-  return { from, kv: createKVUpdater(CID), create }
+  return { from, kv: createKVUpdater(Block), create }
 }

@@ -1,18 +1,24 @@
 import createHttp from './https.js'
 import createInmemory from './inmemory.js'
+import createLevel from './level.js'
 
 export default Block => {
   const http = createHttp(Block)
   const inmem = createInmemory(Block)
-  const from = str => {
-    if (str.startsWith('http://') || /* c8 ignore next */ str.startsWith('https://')) {
-      return http(str)
+  const level = createLevel(Block)
+  const from = id => {
+    if (id.startsWith('http://') || /* c8 ignore next */ id.startsWith('https://')) {
+      return http(id)
     }
-    throw new Error(`Cannot resolve identifier "${str}"`)
+    throw new Error(`Cannot resolve identifier "${id}"`)
   }
-  const create = str => {
-    if (str === 'inmem' || str === 'inmemory') {
+  const create = id => {
+    if (id === 'inmem' || id === 'inmemory') {
       return inmem()
+    } else if (typeof id === 'object') {
+      if (id.leveldown) {
+        return level(id.leveldown)
+      }
     }
   }
   return { from, create }

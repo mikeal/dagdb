@@ -1,5 +1,6 @@
 # DagDB
 
+<!---
 DagDB is a flexible database for distributed applications.
 
 It can store JSON, binary, and even streams of binary. You can nest
@@ -29,3 +30,4 @@ db = await db.update()
 ```
 
 To learn more, move along to the [Getting Started](getting-started) section.
+--->
