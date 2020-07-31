@@ -142,7 +142,12 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return 'remotes'
     }
 
-    async add (name, info) {
+    async add (name, info = {}) {
+      if (typeof info === 'string') {
+        info = { source: info }
+      }
+      const defaults = { strategy: { full: true } }
+      info = { ...defaults, ...info }
       const block = toBlock(info, 'RemoteInfo')
       await this.db.store.put(block)
       const remote = new Remote({ info: await block.cid() }, this.db)

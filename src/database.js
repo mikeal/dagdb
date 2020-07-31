@@ -118,9 +118,13 @@ export default (Block) => {
       return { size: await kv.size() }
     }
 
-    async merge (db) {
+    async _merge (db) {
       const kv = await this._kv
       await kv.pull(db)
+    }
+
+    merge (db) {
+      return decorateUpdate(this, this._merge(db))
     }
 
     encode () {

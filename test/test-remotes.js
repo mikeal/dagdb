@@ -192,8 +192,7 @@ describe('test-remotes', () => {
             let db2 = await create()
             await db2.set('test', { hello: 'world' })
             db2 = await db2.update()
-            const info = { source: db2.updater.infoUrl, strategy: { full: true } }
-            await db1.remotes.add('a', info)
+            await db1.remotes.add('a', db2.updater.infoUrl)
             db1 = await db1.update()
             db1 = await createDatabase.open(db1.updater.infoUrl)
             same(await db1.get('test'), { hello: 'world' })
