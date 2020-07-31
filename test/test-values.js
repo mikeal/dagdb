@@ -63,6 +63,14 @@ describe('test-values', () => {
     db = await db.commit()
     val = await db.get('fromLinked')
     same(await val.test(), { hello: 'world' })
+
+    // test equals
+    val = val.test
+    same(val.equals(val), true)
+    same(val.equals(val.cid), true)
+    const newlink = await db.link(Math.random())
+    same(val.equals(newlink), false)
+    same(val.equals(newlink.cid), false)
   })
 
   test('blocks as links', async () => {

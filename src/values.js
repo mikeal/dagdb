@@ -4,6 +4,7 @@ import createFBL from '@ipld/fbl/bare.js'
 const types = {}
 
 export default (Block) => {
+  const { CID } = Block
   const fbl = createFBL(Block, 'dag-cbor')
 
   const fblDecoder = (root, store) => {
@@ -40,7 +41,8 @@ export default (Block) => {
     // decode only accepts IPLD Data Model
     // this method is expected to accept decoded Block data directly
     // and it can't work with any special types.
-    if (isCID(value)) {
+    if (CID.asCID(value)) {
+      value = CID.asCID(value)
       const link = async () => {
         if (link.block) return link.block
         const block = await store.get(value)
@@ -48,6 +50,12 @@ export default (Block) => {
         return decode(block.decode())
       }
       readonly(link, 'cid', value)
+      readonly(link, 'equals', _cid => {
+        if (typeof _cid === 'function' && _cid.cid) {
+          _cid = _cid.cid
+        }
+        return value.equals(_cid)
+      })
       return link
     }
     if (typeof value === 'object') {
