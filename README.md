@@ -231,4 +231,67 @@ all kinds of new data types.
 
 ## Replication
 
+Replication in DagDB is quite different than traditional databases. Since there isn't a client
+and a server, since there's just databases everywhere, replication is a key component of how
+you access data.
 
+The closest thing to DagDB replication you're familiar with is `git`. The way changes are merged
+from one branch to another and from one remote to another. We even have a system for keeping track
+of remote databases that feels a lot like git.
+
+Let's start by adding and pulling from a remote.
+
+```js
+const url = 'http://website.com/db'
+const remoteDatabase = await dagdb.create(url)
+await remoteDatabase.set('hello', 'world').update()
+
+let db = dagdb.create('inmem')
+await db.remotes.add('web', url)
+
+await db.remotes.pull('web')
+db = await db.update()
+
+console.log(await db.get('hello'))
+// prints "world"
+```
+
+Using remotes for replication is an efficient way to move data around because it keeps track
+of the last changeset and can easily pull only the changes since that time. However, if you
+have two data instances locally you can easily merge one into the other without using the
+remote system.
+
+```js
+let db1 = await dagdb.create('inmem')
+let db2 = await dagdb.create('inmem')
+
+db1 = await db1.set('hello', 'world').update()
+db2 = await db2.merge(db1).update()
+
+console.log(await db2.get('hello'))
+// prints "world"
+```
+
+### Replicate remote to key
+
+So far, we've been using replication to merge an entire database's keyspace into our own.
+But as we've already seen, you can use a DagDB database as a value, so it would make sense
+to use a remote to replicate into a key rather than merging into our entire local namespace.
+
+```js
+const url = 'http://website.com/db'
+const remoteDatabase = await dagdb.create(url)
+await remoteDatabase.set('hello', 'world').update()
+
+let db = dagdb.create('inmem')
+await db.remotes.add('web', { source: url, strategy: { keyed: 'webdb' }})
+
+await db.remotes.pull('web')
+db = await db.update()
+const webdb = await db.get('webdb')
+
+console.log(await webdb.get('hello'))
+// prints "world"
+```
+
+## Running the HTTP Interface
