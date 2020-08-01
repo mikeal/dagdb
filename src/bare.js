@@ -30,7 +30,7 @@ export default (Block, ...args) => {
       return database(new CID(info.root), store, updater, ...args)
     } else if (typeof id === 'object') {
       let { root, store, updater } = id
-      if (id.leveldown) {
+      if (id.leveldown || id.s3) {
         store = await stores.from(id, ...args)
         updater = await updaters.kv(store)
         root = await updater.root
@@ -47,7 +47,7 @@ export default (Block, ...args) => {
     } else {
       let store
       let updater
-      if (id.leveldown) {
+      if (id.leveldown || id.s3) {
         store = await stores.create(id, ...args)
         updater = await updaters.kv(store)
       } else {

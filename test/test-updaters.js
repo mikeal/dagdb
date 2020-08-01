@@ -1,6 +1,7 @@
 /* globals describe, it */
 import dagdb from '../src/index.js'
 import memdown from 'memdown'
+import createS3 from './lib/mock-s3.js'
 import { deepStrictEqual as same, ok } from 'assert'
 
 const test = it
@@ -35,27 +36,41 @@ const updateTests = create => {
   })
 }
 
-describe('inmem', () => {
-  updateTests(() => dagdb.create('inmem'))
-})
-
-describe('level memdown', () => {
-  updateTests(() => dagdb.create({ leveldown: memdown(Math.random().toString()) }))
+const openTests = mkopts => {
   test('open', async () => {
-    const leveldown = memdown(Math.random().toString())
-    let db = await dagdb.create({ leveldown })
+    const opts = mkopts()
+    let db = await dagdb.create(opts)
     await db.set('hello', 'world')
     db = await db.update()
     same(await db.get('hello'), 'world')
-    db = await dagdb.open({ leveldown })
+    db = await dagdb.open(opts)
     same(await db.get('hello'), 'world')
     same(db.root, await db.updater.root)
 
     await db.set('hello', 'world2')
     db = await db.update()
 
-    db = await dagdb.open({ leveldown })
+    db = await dagdb.open(opts)
     same(await db.get('hello'), 'world2')
     same(db.root, await db.updater.root)
   })
+}
+
+const addTests = mkopts => {
+  updateTests(() => dagdb.create(mkopts()))
+  openTests(mkopts)
+}
+
+describe('inmem', () => {
+  updateTests(() => dagdb.create('inmem'))
+})
+
+describe('level memdown', () => {
+  const mkopts = () => ({ leveldown: memdown(Math.random().toString()) })
+  addTests(mkopts)
+})
+
+describe('s3', () => {
+  const mkopts = () => ({ s3: createS3() })
+  addTests(mkopts)
 })
