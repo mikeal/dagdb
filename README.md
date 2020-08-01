@@ -232,7 +232,7 @@ printFile('my file', 'file')
 ```
 
 Note that, while you can use any Stream interface that is a valid async generator (like Node.js
-Streams) to store the data, when you retieve the stream it will be returned as a common async
+Streams) to store the data, when you retrieve the stream it will be returned as a common async
 generator (not a Node.js Stream).
 
 The size of every chunk in the stream is preserved. However, *this may change in the future*.
