@@ -75,7 +75,7 @@ can be any string, and values can be almost anything.
 For instance, all JSON types are natively supported as values.
 
 ```js
-let db = dagdb.create('inmem')
+let db = await dagdb.create('inmem')
 await db.set('hello', 'world')
 console.log(await db.get('hello'))
 // prints "world"
@@ -92,7 +92,7 @@ updating it, which will return us a ***new*** `DagDB` instance
 for the newly updated immutable state.
 
 ```js
-let db = dagdb.create('inmem')
+let db = await dagdb.create('inmem')
 await db.set('hello', 'world')
 db = await db.update()
 console.log(await db.get('hello'))
