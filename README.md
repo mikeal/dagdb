@@ -31,6 +31,23 @@ import dagdb from 'dagdb'
 const db = await dagdb.create('inmem') /* 'inmemory' also works */
 ```
 
+### Create a database in S3
+
+```js
+import dagdb from 'dagdb'
+import { S3 } from 'aws-sdk'
+
+const Bucket = 'bucketName'
+const s3 = new S3({ params: { Bucket } })
+
+let db = await dagdb.create({ s3 })
+```
+
+This uses S3 for block storage and for the update transaction. This will work fine as long as you
+don't try to update the same database with a lot of concurrency, then you might encounter eventually
+consistency issues w/ S3. An updater built on top of Dynamo that can do transactional updates is
+planned in order to resolve these concerns.
+
 ### Create a database from a leveldown interface.
 
 This allows you to store DagDB data in a
@@ -57,6 +74,18 @@ const db = await dagdb.create('http://website.com/dbname')
 import dagdb from 'dagdb'
 
 const db = await dagdb.open('http://website.com/dbname')
+```
+
+### Create a database in S3
+
+```js
+import dagdb from 'dagdb'
+import { S3 } from 'aws-sdk'
+
+const Bucket = 'bucketName'
+const s3 = new S3({ params: { Bucket } })
+
+let db = await dagdb.open({ s3 })
 ```
 
 ### Opening a leveldown database
