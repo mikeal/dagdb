@@ -294,4 +294,25 @@ console.log(await webdb.get('hello'))
 // prints "world"
 ```
 
-## Running the HTTP Interface
+## Running the HTTP Service
+
+### in Node.js
+
+If you're using Node.js it's quite easy to get an HTTP handler you can
+pass to `http.createServer` for any database instance.
+
+```js
+import http from 'http'
+import dagdb from 'dagdb'
+import createHandler from 'dagdb/server.js'
+
+const db = await dagdb.create('inmem')
+const handler = createHandler(db)
+
+const server = http.createServer(handler)
+server.listen(8080)
+```
+
+### in Lambda
+
+
