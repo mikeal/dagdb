@@ -31,6 +31,24 @@ import dagdb from 'dagdb'
 const db = await dagdb.create('inmem') /* 'inmemory' also works */
 ```
 
+### Create a database in a Browser
+
+```js
+import dagdb from 'dagdb'
+
+const db = await dagdb.create({ browser: true })
+```
+
+If you want to have multiple unique databases stored in the browser
+you can use the `updateKey` option.
+
+```js
+import dagdb from 'dagdb'
+
+// the default updateKey is "root"
+const db = await dagdb.create({ browser: true, updateKey: 'root' })
+```
+
 ### Create a database in S3
 
 ```js
@@ -74,6 +92,24 @@ const db = await dagdb.create('http://website.com/dbname')
 import dagdb from 'dagdb'
 
 const db = await dagdb.open('http://website.com/dbname')
+```
+
+### Opening a database in the Browser
+
+```js
+import dagdb from 'dagdb'
+
+const db = await dagdb.open({ browser: true })
+```
+
+If you want to have multiple unique databases stored in the browser
+you can use the `updateKey` option.
+
+```js
+import dagdb from 'dagdb'
+
+// the default updateKey is "root"
+const db = await dagdb.open({ browser: true, updateKey: 'root' })
 ```
 
 ### Create a database in S3

@@ -15,7 +15,7 @@ export default Block => {
   const getRoot = async updater => {
     let buff
     try {
-      buff = await updater.store._getKey(['root'])
+      buff = await updater.store._getKey([updater.updateKey])
     } catch (e) {
       if (e.message.toLowerCase().includes('not found')) {
         return null
@@ -29,9 +29,10 @@ export default Block => {
   }
 
   class KVUpdater {
-    constructor (store) {
+    constructor (store, updateKey = 'root') {
       this.store = store
       this.lock = null
+      this.updateKey = updateKey
     }
 
     get root () {
@@ -48,10 +49,10 @@ export default Block => {
         await this.lock.p
       }
       this.lock = lock(this)
-      if (!(await this.store._hasKey(['root']))) {
+      if (!(await this.store._hasKey([this.updateKey]))) {
         if (prevRoot) throw new Error('There is no previous root')
       } else {
-        const prev = new CID(await this.store._getKey(['root']))
+        const prev = new CID(await this.store._getKey([this.updateKey]))
         if (!prevRoot || !prev.equals(prevRoot)) {
           this.lock.unlock()
           return prev
@@ -64,7 +65,7 @@ export default Block => {
 
     _update (newRoot) {
       const { buffer } = newRoot
-      return this.store._put(['root'], buffer)
+      return this.store._put([this.updateKey], buffer)
     }
   }
 
