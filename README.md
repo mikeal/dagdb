@@ -323,7 +323,7 @@ console.log(await db.get('hello'))
 
 Using remotes for replication is an efficient way to move data around because it keeps track
 of the last changeset and can easily pull only the changes since that time. However, if you
-have two data instances locally you can easily merge one into the other without using the
+have two database instances locally you can easily merge one into the other without using the
 remote system.
 
 ```js
