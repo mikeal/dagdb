@@ -157,7 +157,7 @@ Now let's look at some features unique to DagDB and the primitives it's built on
 const link = await db.link({ name: 'Earth', size: 3958.8 })
 await db.set('mikeal', { name: 'Mikeal Rogers', planet: link })
 await db.set('chris', { name: 'Chris Hafey', planet: link })
-db = db.update()
+db = await db.update()
 
 const howBigIsYourPlanet = async key => {
   const person = await db.get(key)
