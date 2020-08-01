@@ -342,6 +342,3 @@ const server = http.createServer(handler)
 server.listen(8080)
 ```
 
-### in Lambda
-
-
