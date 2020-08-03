@@ -31,7 +31,8 @@ export default Block => {
     }
 
     async _getBlock (cid) {
-      const data = await this._getBuffer(this.mkurl(cid.toString('base32')))
+      const buf = await this._getBuffer(this.mkurl(cid.toString('base32')))
+      const data = buf instanceof ArrayBuffer ? new Uint8Array(buf) : buf
       return Block.create(data, cid)
     }
 
