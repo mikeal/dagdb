@@ -10,7 +10,7 @@ const isHttp = id => {
   return id.startsWith('http://') || id.startsWith('https://')
 }
 
-export default (Block, ...args) => {
+export default (Block, { lfs, fileUpdater }) => {
   const { CID } = Block
   const database = createDatabase(Block)
   const stores = createStores(Block)
@@ -40,6 +40,11 @@ export default (Block, ...args) => {
     throw new Error('Not implemented') /* c8 ignore next */
   }
   const create = async (id, ...args) => {
+    if (id === 'github-action') {
+      const store = await lfs()
+      const updater = await fileUpdater('./root.cid', { commit: true })
+      return database.create(store, updater)
+    }
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
       if (info.root) throw new Error('Database already created')
@@ -50,6 +55,10 @@ export default (Block, ...args) => {
       if (id.leveldown || id.s3 || id.browser) {
         store = await stores.create(id, ...args)
         updater = await updaters.kv(store, id.updateKey)
+      } else if (id['git+lfs']) {
+        const { repo, user, updateFile, token, blockstoreFile } = id['git+lfs']
+        store = await lfs(blockstoreFile, repo, user, token)
+        updater = await fileUpdater(updateFile || './root.cid')
       } else {
         store = await stores.create(id, ...args)
         updater = await updaters.create(id, ...args)

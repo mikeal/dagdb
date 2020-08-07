@@ -121,7 +121,7 @@ describe('test-remotes', () => {
 
   test('error: open and create w/o url', async () => {
     const bare = await import('../src/bare.js')
-    const main = bare.default(Block)
+    const main = bare.default(Block, {})
     try {
       await main.open('test')
       throw new Error('Did not throw')
