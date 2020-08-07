@@ -33,6 +33,7 @@
   "homepage": "https://github.com/mikeal/dagdb#readme",
   "browser": {
     "./index.js": "./src/browser.js",
+    "./src/index.js": "./src/browser.js",
     "./src/native/index.js": "./src/native/browser.js",
     "dagdb/schema": "./src/schema/index.js"
   },
