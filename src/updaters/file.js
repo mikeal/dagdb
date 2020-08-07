@@ -3,17 +3,17 @@ import fs from 'fs'
 export default Block => {
   const { CID } = Block
   class FileUpdater {
-    constructor (path, { commit }) {
-      this.commit = commit
-      this.fd = fs.open(path)
+    constructor (path, opts={}) {
+      this.path = path
+      this.commit = opts.commit
     }
 
     get root () {
       try {
         fs.statSync(this.path)
       } catch (e) {
-        console.error(e)
-        if (e.message !== 'fixme') throw e
+        /* c8 ignore next */
+        if (e.code !== 'ENOENT') throw e
         return null
       }
       const buffer = fs.readFileSync(this.path)
@@ -22,6 +22,7 @@ export default Block => {
 
     update (newRoot, oldRoot) {
       const current = this.root
+      /* c8 ignore next */
       if (current && !oldRoot) return current
       if (!oldRoot || current.equals(oldRoot)) {
         fs.writeFileSync(this.path, newRoot.buffer)

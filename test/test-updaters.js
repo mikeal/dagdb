@@ -1,6 +1,7 @@
 /* globals describe, it */
 import dagdb from '../src/index.js'
 import memdown from 'memdown'
+import tempy from 'tempy'
 import createS3 from './lib/mock-s3.js'
 import { deepStrictEqual as same, ok } from 'assert'
 
@@ -80,5 +81,23 @@ describe('s3', () => {
 if (process.browser) {
   describe('browser', () => {
     addTests(() => ({ browser: true, updateKey: rand() }))
+  })
+} else {
+  const bs = () => tempy.file({name: 'blockstore.ipld-lfs'})
+  const up = () => tempy.file({name: 'root.cid'})
+
+  describe('git+lfs', function () {
+    this.timeout(60 * 1000)
+    addTests(() => {
+      const opts = { blockstoreFile: bs(), updateFile: up() }
+      return { 'git+lfs': opts }
+    })
+  })
+  describe('git+lfs no lru', function () {
+    this.timeout(60 * 1000)
+    openTests(() => {
+      const opts = { blockstoreFile: bs(), updateFile: up(), disableCache: true }
+      return { 'git+lfs': opts }
+    })
   })
 }

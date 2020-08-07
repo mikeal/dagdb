@@ -10,7 +10,8 @@ const isHttp = id => {
   return id.startsWith('http://') || id.startsWith('https://')
 }
 
-export default (Block, { lfs, fileUpdater }) => {
+export default (Block, opts = {}) => {
+  const { lfs, fileUpdater } = opts
   const { CID } = Block
   const database = createDatabase(Block)
   const stores = createStores(Block)
@@ -23,7 +24,23 @@ export default (Block, { lfs, fileUpdater }) => {
     const updater = await updaters.from(id, rel(info.updater), ...args)
     return { info, store, updater }
   }
+  const mklfs = async (id, ...args) => {
+    const { repo, user, updateFile, token, blockstoreFile, disableCache } = id['git+lfs']
+    const store = await lfs(blockstoreFile, repo, user, token, disableCache )
+    const updater = await fileUpdater(updateFile /* c8 ignore next */ || './root.cid')
+    return { store, updater }
+  }
   const open = async (id, ...args) => {
+    /* c8 ignore next */
+    if (id === 'github-action') {
+      /* c8 ignore next */
+      const store = await lfs()
+      /* c8 ignore next */
+      const updater = await fileUpdater('./root.cid', { commit: true })
+      /* c8 ignore next */
+      return database(updater.root, store, updater)
+      /* c8 ignore next */
+    }
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
       if (!info.root) throw new Error('Database has not been created')
@@ -34,16 +51,26 @@ export default (Block, { lfs, fileUpdater }) => {
         store = await stores.from(id, ...args)
         updater = await updaters.kv(store, id.updateKey)
         root = await updater.root
+      } else if (id['git+lfs']) {
+        const resp = await mklfs(id)
+        store = resp.store
+        updater = resp.updater
+        root = updater.root
       }
       return database(root, store, updater, ...args)
     }
     throw new Error('Not implemented') /* c8 ignore next */
   }
   const create = async (id, ...args) => {
+    /* c8 ignore next */
     if (id === 'github-action') {
+      /* c8 ignore next */
       const store = await lfs()
+      /* c8 ignore next */
       const updater = await fileUpdater('./root.cid', { commit: true })
+      /* c8 ignore next */
       return database.create(store, updater)
+      /* c8 ignore next */
     }
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
@@ -56,9 +83,9 @@ export default (Block, { lfs, fileUpdater }) => {
         store = await stores.create(id, ...args)
         updater = await updaters.kv(store, id.updateKey)
       } else if (id['git+lfs']) {
-        const { repo, user, updateFile, token, blockstoreFile } = id['git+lfs']
-        store = await lfs(blockstoreFile, repo, user, token)
-        updater = await fileUpdater(updateFile || './root.cid')
+        const resp = await mklfs(id)
+        store = resp.store
+        updater = resp.updater
       } else {
         store = await stores.create(id, ...args)
         updater = await updaters.create(id, ...args)
