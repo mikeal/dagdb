@@ -14,7 +14,7 @@
     "test:cli": "tap test/cli/test-*.js",
     "test:no-coverage": "npm run lint && npm run test:node && npm run test:browser",
     "test": "hundreds mocha test/test-*.js && npm run test:browser",
-    "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
+    "coverage": "npx c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
     "build:schema": "ipld-schema to-json Schema.md > src/schema/schema.json"
   },
   "repository": {
@@ -26,6 +26,9 @@
   "license": "(Apache-2.0 AND MIT)",
   "bugs": {
     "url": "https://github.com/mikeal/dagdb/issues"
+  },
+  "c8": {
+    "exclude": [ "src/updaters/commit.js", "test*" ]
   },
   "homepage": "https://github.com/mikeal/dagdb#readme",
   "browser": {
@@ -75,6 +78,7 @@
     "standard": "^14.3.4",
     "tap": "^14.10.8",
     "vuepress": "^1.5.2",
-    "tempy": "^0.6.0"
+    "tempy": "^0.6.0",
+    "c8": "^7.2.1"
   }
 }

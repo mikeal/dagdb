@@ -12,8 +12,8 @@ const getUser = str => {
   return str.slice(str.lastIndexOf('/') + 1)
 }
 
-export default (Block, opts={}) => {
-  const lru = new LRU({ ...defaults, ...opts})
+export default (Block, opts = {}) => {
+  const lru = new LRU({ ...defaults, ...opts })
   return async (filepath = './blockstore.ipld-lfs', repo, user, token, disableCache) => {
     if (!repo) repo = await getRepo()
     if (!user) user = process.env.GITHUB_ACTOR || getUser(repo)

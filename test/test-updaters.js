@@ -83,8 +83,8 @@ if (process.browser) {
     addTests(() => ({ browser: true, updateKey: rand() }))
   })
 } else {
-  const bs = () => tempy.file({name: 'blockstore.ipld-lfs'})
-  const up = () => tempy.file({name: 'root.cid'})
+  const bs = () => tempy.file({ name: 'blockstore.ipld-lfs' })
+  const up = () => tempy.file({ name: 'root.cid' })
 
   describe('git+lfs', function () {
     this.timeout(60 * 1000)

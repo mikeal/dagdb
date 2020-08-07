@@ -11,7 +11,7 @@ const isHttp = id => {
 }
 
 export default (Block, opts = {}) => {
-  const { lfs, fileUpdater } = opts
+  const { lfs, fileUpdater, commit } = opts
   const { CID } = Block
   const database = createDatabase(Block)
   const stores = createStores(Block)
@@ -26,7 +26,7 @@ export default (Block, opts = {}) => {
   }
   const mklfs = async (id, ...args) => {
     const { repo, user, updateFile, token, blockstoreFile, disableCache } = id['git+lfs']
-    const store = await lfs(blockstoreFile, repo, user, token, disableCache )
+    const store = await lfs(blockstoreFile, repo, user, token, disableCache)
     const updater = await fileUpdater(updateFile /* c8 ignore next */ || './root.cid')
     return { store, updater }
   }
@@ -36,7 +36,9 @@ export default (Block, opts = {}) => {
       /* c8 ignore next */
       const store = await lfs()
       /* c8 ignore next */
-      const updater = await fileUpdater('./root.cid', { commit: true })
+      const updater = await fileUpdater('./root.cid')
+      /* c8 ignore next */
+      updater.onUpdate = commit
       /* c8 ignore next */
       return database(updater.root, store, updater)
       /* c8 ignore next */
@@ -68,6 +70,8 @@ export default (Block, opts = {}) => {
       const store = await lfs()
       /* c8 ignore next */
       const updater = await fileUpdater('./root.cid', { commit: true })
+      /* c8 ignore next */
+      updater.onUpdate = commit
       /* c8 ignore next */
       return database.create(store, updater)
       /* c8 ignore next */

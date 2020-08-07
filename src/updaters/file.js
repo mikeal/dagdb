@@ -3,9 +3,8 @@ import fs from 'fs'
 export default Block => {
   const { CID } = Block
   class FileUpdater {
-    constructor (path, opts={}) {
+    constructor (path) {
       this.path = path
-      this.commit = opts.commit
     }
 
     get root () {
@@ -26,6 +25,7 @@ export default Block => {
       if (current && !oldRoot) return current
       if (!oldRoot || current.equals(oldRoot)) {
         fs.writeFileSync(this.path, newRoot.buffer)
+        if (this.onUpdate) /* c8 ignore next */ this.onUpdate()
         return newRoot
       }
       return current
