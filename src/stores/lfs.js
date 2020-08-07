@@ -18,7 +18,7 @@ export default (Block, opts = {}) => {
     if (!repo) repo = await getRepo()
     if (!user) user = process.env.GITHUB_ACTOR || getUser(repo)
     if (!token) token = /* c8 ignore next */ process.env.GHTOKEN || /* c8 ignore next */ process.env.GITHUB_TOKEN
-    console.log({filepath, repo, user, token: !!token})
+    console.log({ filepath, repo, user, token: !!token })
     const store = await lfs(Block, filepath, repo, user, token)
     const get = async cid => {
       const key = cid.toString()
