@@ -5,7 +5,7 @@ changes may still occur without notice.***
 
 DagDB is a portable and syncable database for the Web.
 
-It can run as a distrubuted database in Node.js, including Serverless
+It can run as a distributed database in Node.js, including Serverless
 environments using AWS services as a backend.
 
 It also runs in the browser. In fact, there is no "client and server"
