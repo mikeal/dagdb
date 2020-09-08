@@ -8,7 +8,7 @@ export default Block => {
   const { CID } = Block
   class HttpUpdater {
     get root () {
-      return this.info().then(info => new CID(info.root))
+      return this.info().then(info => CID.from(info.root))
     }
 
     constructor (infoUrl, updateUrl) {
@@ -26,7 +26,7 @@ export default Block => {
       if (oldRoot) url.searchParams.set('old', oldRoot.toString('base32'))
       else url.searchParams.set('old', 'null')
       const info = await getJSON(url.toString())
-      return new CID(info.root)
+      return CID.from(info.root)
     }
   }
   const from = async (id, ...args) => {

@@ -23,7 +23,7 @@ export default Block => {
       if (await this._hasKey([key, 'complete'])) return { complete: true }
       for await (const linkKey of this._linksFrom(key)) {
         if (await this._hasKey([linkKey, 'complete'])) continue
-        const cid = new CID(linkKey)
+        const cid = CID.from(linkKey)
         if (!(await this.has(cid))) {
           missing.add(linkKey)
           continue

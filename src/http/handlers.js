@@ -21,14 +21,14 @@ const blockstore = (Block, store) => {
         } else {
           depth = store.depthLimit
         }
-        const result = await store.graph(new CID(key), depth)
+        const result = await store.graph(CID.from(key), depth)
         if (result.missing) result.missing = Array.from(result.missing)
         if (result.incomplete) result.incomplete = Array.from(result.incomplete)
         const body = Buffer.from(JSON.stringify({ result, depth }))
         return { headers: jsonHeaders(body), body }
       } else {
         if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
-        const cid = new CID(path)
+        const cid = CID.from(path)
         let block
         try {
           block = await store.get(cid)
@@ -44,14 +44,14 @@ const blockstore = (Block, store) => {
       }
     } else if (method === 'PUT') {
       if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
-      const cid = new CID(path)
+      const cid = CID.from(path)
       const block = Block.create(body, cid)
       await block.validate()
       await store.put(block)
       return { statusCode: 201 }
     } else if (method === 'HEAD') {
       if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
-      const cid = new CID(path)
+      const cid = CID.from(path)
       const has = await store.has(cid)
       if (!has) return { statusCode: 404 }
       if (has.length) return { headers: { 'content-length': has.length } }
@@ -80,8 +80,8 @@ const info = (store, updater, ext) => async opts => {
 const updater = (Block, updater) => async opts => {
   const { CID } = Block
   if (!opts.params.new) throw new Error('Missing required param "new"')
-  opts.params.new = new CID(opts.params.new)
-  if (opts.params.old) opts.params.old = new CID(opts.params.old)
+  opts.params.new = CID.from(opts.params.new)
+  if (opts.params.old) opts.params.old = CID.from(opts.params.old)
   const cid = await updater.update(opts.params.new, opts.params.old)
   const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
   const ret = { headers: jsonHeaders(body), body }

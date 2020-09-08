@@ -6,8 +6,6 @@ import createDatabaseInterface from '../src/database.js'
 import createKV from './lib/mock-kv.js'
 import assert from 'assert'
 
-const importer = str => import(str).then(m => m.default || m)
-
 const database = createDatabaseInterface(Block)
 const test = it
 const same = assert.deepStrictEqual
@@ -63,7 +61,7 @@ describe('test-database', () => {
     await db.set('test', { hello: 'world' })
     db = await db.update()
     same(await db.get('test'), { hello: 'world' })
-    const root = new CID(await updater.store._getKey(['root']))
+    const root = CID.from(await updater.store._getKey(['root']))
     assert.ok(root.equals(db.root))
   })
 
@@ -75,7 +73,7 @@ describe('test-database', () => {
     db = await db.update()
     same(await db.get('test'), { hello: 'world' })
     same(await db.get('test2'), { foo: 'bar' })
-    const root = new CID(await updater.store._getKey(['root']))
+    const root = CID.from(await updater.store._getKey(['root']))
     assert.ok(root.equals(db.root))
   })
 
@@ -140,12 +138,12 @@ describe('test-database', () => {
     let createHandler
     let handler
     before(async () => {
-      httpModule = await importer('http')
+      httpModule = (await import('http')).default
       getPort = () => Math.floor(Math.random() * (9000 - 8000) + 8000)
       stores = {}
       updaters = {}
 
-      createHandler = await importer('../src/http/nodejs.js')
+      createHandler = (await import('../src/http/nodejs.js')).default
 
       handler = async (req, res) => {
         const [id] = req.url.split('/').filter(x => x)
@@ -167,7 +165,7 @@ describe('test-database', () => {
         port = getPort()
         server = httpModule.createServer(handler)
         closed = new Promise(resolve => server.once('close', resolve))
-        createDatabase = await importer('../src/index.js')
+        createDatabase = (await import('../src/index.js')).default
         create = async (opts) => {
           const id = Math.random().toString()
           const url = `http://localhost:${port}/${id}`

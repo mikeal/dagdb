@@ -46,7 +46,7 @@ export default (Block, opts = {}) => {
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
       if (!info.root) throw new Error('Database has not been created')
-      return database(new CID(info.root), store, updater, ...args)
+      return database(CID.from(info.root), store, updater, ...args)
     } else if (typeof id === 'object') {
       let { root, store, updater } = id
       if (id.leveldown || id.s3 || id.browser) {

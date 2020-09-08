@@ -16,7 +16,7 @@ export default Block => {
         return null
       }
       const buffer = fs.readFileSync(this.path)
-      return new CID(buffer)
+      return CID.from(buffer)
     }
 
     update (newRoot, oldRoot) {
@@ -24,7 +24,7 @@ export default Block => {
       /* c8 ignore next */
       if (current && !oldRoot) return current
       if (!oldRoot || current.equals(oldRoot)) {
-        fs.writeFileSync(this.path, newRoot.buffer)
+        fs.writeFileSync(this.path, newRoot.bytes)
         if (this.onUpdate) /* c8 ignore next */ this.onUpdate()
         return newRoot
       }
