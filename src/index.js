@@ -1,4 +1,4 @@
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import bare from './bare.js'
 import lfs from './stores/lfs.js'
 import commit from './updaters/commit.js'

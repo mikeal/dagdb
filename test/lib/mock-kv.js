@@ -1,4 +1,4 @@
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import createStore from '../../src/stores/kv.js'
 import charwise from 'charwise'
 

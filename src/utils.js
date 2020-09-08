@@ -1,5 +1,5 @@
 import * as hamt from './hamt.js'
-import schema from 'dagdb/schema'
+import schema from './schema.js'
 import createValidate from '@ipld/schema-validation'
 
 const isCID = node => node.asCID === node

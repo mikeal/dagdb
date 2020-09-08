@@ -1,5 +1,5 @@
 /* globals describe, before, it */
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import bent from 'bent'
 import createInmemory from '../src/stores/inmemory.js'
 import assert from 'assert'

@@ -1,6 +1,6 @@
 /* globals describe, it, before, after */
 import { fixtures, graphTests, replicateTests, basics } from './lib/storage.js'
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import LRUStore from '../src/stores/lru.js'
 import createInmemory from '../src/stores/inmemory.js'
 import assert from 'assert'

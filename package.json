@@ -5,18 +5,17 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "docs:dev": "vuepress dev docs",
-    "docs:build": "vuepress build docs",
     "lint": "standard",
-    "pretest": "npm run lint",
-    "test:node": "mocha test/test-*.js",
-    "test:browser": "polendina --cleanup --timeout=120 test/test-*.js",
-    "test:cli": "tap test/cli/test-*.js",
-    "test:no-coverage": "npm run lint && npm run test:node && npm run test:browser",
-    "test": "hundreds mocha test/test-*.js && npm run test:browser",
-    "coverage": "npx c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
-    "build:schema": "ipld-schema to-json Schema.md > src/schema/schema.json"
-  },
+    "build": "npm_config_yes=true npx ipjs@latest build --tests",
+    "publish": "npm_config_yes=true npx ipjs@latest publish",
+    "test:cjs": "npm run build && mocha dist/cjs/node-test/test-*.js",
+    "test:node": "hundreds mocha test/test-*.js",
+    "test:browser": "polendina --cleanup dist/cjs/node-test/test-*.js",
+    "test": "npm run lint && npm run test:node && npm run test:cjs && npm run test:browser",
+    "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs"
+ },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mikeal/dagdb.git"
@@ -28,35 +27,26 @@
     "url": "https://github.com/mikeal/dagdb/issues"
   },
   "c8": {
-    "exclude": [ "src/updaters/commit.js", "test*" ]
+    "exclude": [
+      "src/updaters/commit.js",
+      "test*"
+    ]
   },
   "homepage": "https://github.com/mikeal/dagdb#readme",
-  "browser": {
-    "./index.js": "./src/browser.js",
-    "./src/index.js": "./src/browser.js",
-    "./src/native/index.js": "./src/native/browser.js",
-    "dagdb/schema": "./src/schema/index.js"
-  },
   "exports": {
     ".": {
-      "require": "./dist/src/index.cjs",
       "import": "./src/index.js",
       "browser": "./src/browser.js"
     },
-    "./schema": {
-      "require": "./src/schema/schema.cjs",
-      "browser": "./src/schema/index.js",
-      "import": "./src/schema/schema.mjs"
-    },
-    "./server.js": {
+    "./server": {
       "import": "./src/http/nodejs.js"
     }
   },
   "dependencies": {
-    "@ipld/block": "^6.0.1",
-    "@ipld/fbl": "1.0.1",
-    "@ipld/schema-validation": "1.0.1",
-    "bent": "^7.3.7",
+    "@ipld/block": "^6.0.3",
+    "@ipld/fbl": "2.0.0",
+    "@ipld/schema-validation": "1.0.3",
+    "bent": "^7.3.10",
     "charwise": "^3.0.1",
     "datastore-car": "^1.2.0",
     "encoding-down": "^6.3.0",
@@ -65,21 +55,21 @@
     "levelup": "^4.4.0",
     "lru-cache": "^6.0.0",
     "murmurhash3js-revisited": "^3.0.0",
-    "lfs-store": "^0.0.2",
+    "lfs-store": "^0.0.5",
     "git-remote-origin-url": "^3.1.0"
   },
   "devDependencies": {
     "aws-config": "^1.4.0",
-    "aws-sdk": "^2.719.0",
-    "hundreds": "0.0.7",
+    "aws-sdk": "^2.737.0",
+    "hundreds": "0.0.8",
     "ipld-schema": "^0.3.2",
     "memdown": "^5.1.0",
-    "mocha": "^8.0.1",
-    "polendina": "^1.0.0",
+    "mocha": "^8.1.1",
+    "polendina": "^1.1.0",
     "standard": "^14.3.4",
     "tap": "^14.10.8",
-    "vuepress": "^1.5.2",
+    "vuepress": "^1.5.3",
     "tempy": "^0.6.0",
-    "c8": "^7.2.1"
+    "c8": "^7.3.0"
   }
 }

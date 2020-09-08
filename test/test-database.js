@@ -1,5 +1,5 @@
 /* globals it, describe, before, after */
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import createInmemory from '../src/stores/inmemory.js'
 import createUpdater from '../src/updaters/kv.js'
 import createDatabaseInterface from '../src/database.js'

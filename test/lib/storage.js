@@ -1,6 +1,6 @@
 /* globals it */
 import createReplicate from '../../src/stores/replicate.js'
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import assert from 'assert'
 
 const test = it
