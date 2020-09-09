@@ -44,7 +44,8 @@ jobs:
       run: npm install
     - name: Test
       run: npm_config_yes=true npx best-test@latest
-
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Publish
       uses: mikeal/merge-release@master
       env:
