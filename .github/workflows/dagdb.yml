@@ -23,7 +23,6 @@ jobs:
       if: steps.cache-modules.outputs.cache-hit != 'true'
       run: npm install
     - name: Test
-      run: npm_config_yes=true npx best-test@latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: npm_config_yes=true npx best-test@latest
