@@ -43,7 +43,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       const local = this.rootDecode.head
       const resp = await getJSON(info.source)
       if (!resp.updater) throw new Error('Remote must have updater to use push')
-      const root = new CID(resp.root)
+      const root = CID.from(resp.root)
 
       await this.setStorage(info, resp)
 
@@ -66,7 +66,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
       const resp = await getJSON(info.source)
       // TODO: validate response data against a schema
-      const root = new CID(resp.root)
+      const root = CID.from(resp.root)
       await this.setStorage(info, resp)
       const database = new exports.Database(root, this.store, this.updater)
       if (this.rootDecode.head) {

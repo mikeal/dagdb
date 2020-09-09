@@ -1,5 +1,5 @@
 /* globals describe, it */
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import createInmemory from '../src/stores/inmemory.js'
 import createKV from '../src/kv.js'
 import assert from 'assert'

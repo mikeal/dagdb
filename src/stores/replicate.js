@@ -20,7 +20,7 @@ const create = Block => {
       skip.add(key)
       let block
       try {
-        block = await _from.get(new CID(key))
+        block = await _from.get(CID.from(key))
       } catch (e) {
         if (e.statusCode !== 404) throw e
         missing.add(key)
@@ -37,7 +37,7 @@ const create = Block => {
     for (const key of [...incomplete.values()]) {
       incomplete.delete(key)
       const _depth = depth - 1
-      const result = await replicate(new CID(key), _from, _to, _depth, batchSize, skip)
+      const result = await replicate(CID.from(key), _from, _to, _depth, batchSize, skip)
       if (result.complete) continue
       else {
         if (result.missing) {

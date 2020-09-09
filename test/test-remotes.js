@@ -1,5 +1,5 @@
 /* globals describe, before, it */
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import bent from 'bent'
 import createInmemory from '../src/stores/inmemory.js'
 import assert from 'assert'
@@ -276,7 +276,7 @@ describe('test-remotes', () => {
             const url = info.source
             const split = url.split('/').filter(x => x)
             const id = split[split.length - 1]
-            const root = new CID((await getJSON(info.source)).root)
+            const root = CID.from((await getJSON(info.source)).root)
             const updater = { root, update: () => oldRoot }
             updaters[id] = updater
             try {

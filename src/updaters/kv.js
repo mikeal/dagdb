@@ -25,7 +25,7 @@ export default Block => {
         /* c8 ignore next */
       }
     }
-    return new CID(buff)
+    return CID.from(buff)
   }
 
   class KVUpdater {
@@ -52,7 +52,7 @@ export default Block => {
       if (!(await this.store._hasKey([this.updateKey]))) {
         if (prevRoot) throw new Error('There is no previous root')
       } else {
-        const prev = new CID(await this.store._getKey([this.updateKey]))
+        const prev = CID.from(await this.store._getKey([this.updateKey]))
         if (!prevRoot || !prev.equals(prevRoot)) {
           this.lock.unlock()
           return prev
@@ -64,8 +64,8 @@ export default Block => {
     }
 
     _update (newRoot) {
-      const { buffer } = newRoot
-      return this.store._put([this.updateKey], buffer)
+      const { bytes } = newRoot
+      return this.store._put([this.updateKey], bytes)
     }
   }
 

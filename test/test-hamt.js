@@ -1,6 +1,6 @@
 /* globals describe, it */
 import * as hamt from '../src/hamt.js'
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import assert from 'assert'
 
 const test = it
