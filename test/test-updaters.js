@@ -1,4 +1,4 @@
-/* globals describe, it */
+/* globals before, describe, it */
 import dagdb from '../src/index.js'
 import memdown from 'memdown'
 import createS3 from './lib/mock-s3.js'
@@ -43,6 +43,7 @@ const openTests = mkopts => {
     await db.set('hello', 'world')
     db = await db.update()
     same(await db.get('hello'), 'world')
+    if (db.store.close) await db.store.close()
     db = await dagdb.open(opts)
     same(await db.get('hello'), 'world')
     same(db.root, await db.updater.root)
@@ -50,9 +51,12 @@ const openTests = mkopts => {
     await db.set('hello', 'world2')
     db = await db.update()
 
+    if (db.store.close) await db.store.close()
     db = await dagdb.open(opts)
     same(await db.get('hello'), 'world2')
     same(db.root, await db.updater.root)
+
+    // if (db.store.close) await db.store.close()
   })
 }
 
@@ -82,24 +86,26 @@ if (process.browser) {
     addTests(() => ({ browser: true, updateKey: rand() }))
   })
 } else {
-  describe('git+lfs', async () => {
-    const tempy = (await import('tempy')).default
-    const blockstoreFile = tempy.file({ name: 'blockstore.ipld-lfs' })
-    const updateFile = tempy.file({ name: 'root.cid' })
-
+  let tempy
+  before(async () => {
+    tempy = (await import('tempy')).default
+  })
+  describe('git+lfs', function () {
     this.timeout(60 * 1000)
     addTests(() => {
+      const blockstoreFile = tempy.file({ name: 'blockstore.ipld-lfs' })
+      const updateFile = tempy.file({ name: 'root.cid' })
+
       const opts = { blockstoreFile, updateFile }
       return { 'git+lfs': opts }
     })
   })
-  describe('git+lfs no lru', async () => {
-    const tempy = (await import('tempy')).default
-    const blockstoreFile = tempy.file({ name: 'blockstore.ipld-lfs' })
-    const updateFile = tempy.file({ name: 'root.cid' })
-
+  describe('git+lfs no lru', function () {
     this.timeout(60 * 1000)
     openTests(() => {
+      const blockstoreFile = tempy.file({ name: 'blockstore.ipld-lfs' })
+      const updateFile = tempy.file({ name: 'root.cid' })
+
       const opts = { blockstoreFile, updateFile, disableCache: true }
       return { 'git+lfs': opts }
     })

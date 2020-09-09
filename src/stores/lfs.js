@@ -37,6 +37,6 @@ export default (Block, opts = {}) => {
       await store.put(block)
       if (!disableCache) lru.set(key, block)
     }
-    return { get, put }
+    return { get, put, close: () => store.close() }
   }
 }
