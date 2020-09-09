@@ -12,7 +12,7 @@
     "test:node": "hundreds mocha test/test-*.js",
     "test:browser": "polendina --cleanup dist/cjs/browser-test/test-*.js",
     "test": "npm run lint && npm run test:node && npm run test:cjs && npm run test:browser",
-    "test:v12": "npm run lint && mocha test/test-*.js && npm run test:cjs && npm run test:browser",
+    "test:node-v12": "npm run lint && mocha test/test-*.js && npm run test:cjs && npm run test:browser",
     "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
     "docs:dev": "vuepress dev docs",
     "docs:build": "vuepress build docs"
