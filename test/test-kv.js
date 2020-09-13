@@ -186,4 +186,21 @@ describe('test-kv', () => {
     decoded = value.decodeUnsafe()
     same(decoded, { hello: 'world', pass: true })
   })
+
+  test('object set, multiget', async () => {
+    let db = await basics()
+    let threw = true
+    try {
+      await db.set('asdf')
+      threw = false
+    } catch (e) {
+      if (e.message !== 'Missing value') throw e
+    }
+    same(threw, true)
+    await db.set({ t1: 1, t2: 2 })
+    db = await db.commit()
+    const [t1, t2] = await db.get(['t1', 't2'])
+    same(t1, 1)
+    same(t2, 2)
+  })
 })

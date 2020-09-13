@@ -135,6 +135,10 @@ const create = (Block) => {
     }
 
     async set (key, block) {
+      if (typeof block === 'undefined') {
+        if (typeof key !== 'object') throw new Error('Missing value')
+        return Promise.all(Object.entries(key).map(([key, value]) => this.set(key, value)))
+      }
       block = await this.__encode(block)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
@@ -201,6 +205,7 @@ const create = (Block) => {
     }
 
     async get (key) {
+      if (Array.isArray(key)) return Promise.all(key.map(k => this.get(k)))
       const block = await this.getBlock(key)
       return decode(block.decode(), this.store, this.updater)
     }
