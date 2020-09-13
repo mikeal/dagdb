@@ -1,9 +1,11 @@
 /* globals describe, it */
 import Block from '@ipld/block/defaults'
+import mainModule from '../src/bare.js'
 import createInmemory from '../src/stores/inmemory.js'
 import createKV from '../src/kv.js'
 import assert from 'assert'
 
+const main = mainModule(Block)
 const inmem = createInmemory(Block)
 const kv = createKV(Block)
 const test = it
@@ -136,5 +138,14 @@ describe('test-values', () => {
     for await (const buffer of obj2.two.read(0, 2)) {
       same(toString(buffer), '12')
     }
+  })
+
+  test('dagdb in dagdb w/ empty', async () => {
+    let db = await main.create('inmem')
+    let val = await db.empty()
+    await db.set('subdb', val)
+    db = await db.update()
+    val = await db.get('subdb')
+    same(val.root.equals((await db.empty()).root), true)
   })
 })

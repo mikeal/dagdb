@@ -145,6 +145,11 @@ export default (Block) => {
       }
       return new Database(current, this.store, this.updater)
     }
+
+    async empty () {
+      const block = await empty
+      return new Database(await block.cid(), this.store)
+    }
   }
 
   remoteExports.Database = Database
