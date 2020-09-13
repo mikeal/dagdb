@@ -77,6 +77,11 @@ export default (Block) => {
       return kv.pull(...args)
     }
 
+    async has (...args) {
+      const kv = await this._kv
+      return kv.has(...args)
+    }
+
     async get (...args) {
       const kv = await this._kv
       return kv.get(...args)

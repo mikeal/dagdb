@@ -27,6 +27,8 @@ const basics = async (_create = create) => {
   const latest = await db.commit()
   obj = await latest.get('test')
   same(obj, { hello: 'world' })
+  same(await db.has('test'), true)
+  same(await db.has('missing'), false)
   return latest
 }
 
