@@ -23,6 +23,11 @@ const decorateUpdate = (db, p) => {
   return p
 }
 
+const proxy = async function * (kv, key, ...args) {
+  kv = await kv
+  yield * kv[key](...args)
+}
+
 export default (Block) => {
   const { CID } = Block
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
@@ -99,6 +104,10 @@ export default (Block) => {
     async _del (...args) {
       const kv = await this._kv
       return kv.del(...args)
+    }
+
+    all (...args) {
+      return proxy(this._kv, 'all', ...args)
     }
 
     del (...args) {

@@ -160,20 +160,23 @@ const create = (Block) => {
     }
 
     all (opts) {
-      opts = { ...{ blocks: false }, ...opts }
+      opts = { ...{ blocks: false, decode: true }, ...opts }
       const get = this.store.get.bind(this.store)
+      const _decode = block => decode(block.decode(), this.store, this.updater)
       const iter = async function * (t) {
         const head = await t.getHead()
         for (const [key, [, block]] of t.cache.entries()) {
           if (!block) continue
-          if (opts.blocks) yield [key, block]
+          if (opts.decode) yield [key, _decode(block)]
+          else if (opts.blocks) yield [key, block]
           else yield [key, await block.cid()]
         }
         const _iter = hamt.all(head, get)
         for await (let { key, value } of _iter) {
           key = toString(key)
           if (!t.cache.has(key)) {
-            if (opts.blocks) yield [key, await get(value)]
+            if (opts.decode) yield [key, _decode(await get(value))]
+            else if (opts.blocks) yield [key, await get(value)]
             else yield [key, value]
           }
         }

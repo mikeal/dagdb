@@ -228,7 +228,7 @@ export default (Block, fromBlock, kv) => {
       const prop = Prop.create(this, name)
       const kvdb = await this.getKV()
       const ops = []
-      for await (const [key, value] of kvdb.all()) {
+      for await (const [key, value] of kvdb.all({ decode: false })) {
         ops.push({ set: { key, val: value } })
       }
       const promises = []

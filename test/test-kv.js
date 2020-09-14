@@ -72,40 +72,44 @@ describe('test-kv', () => {
   test('iter over all in db', async () => {
     const kvs = await basics()
     assert.ok(await kvs.has('test'))
-    for await (const [key, link] of kvs.all()) {
+    for await (const [key, link] of kvs.all({ decode: false })) {
       assert.ok(isCID(link))
       same(key, 'test')
       assert.ok(link.equals(await hello.cid()))
     }
-    for await (const [key, block] of kvs.all({ blocks: true })) {
+    for await (const [key, block] of kvs.all({ blocks: true, decode: false })) {
       assert.ok(Block.isBlock(block))
       same(key, 'test')
       assert.ok((await block.cid()).equals(await block.cid()))
     }
     await kvs.set('test2', { test: 1 })
     let _link
-    for await (const [key, link] of kvs.all()) {
+    for await (const [key, link] of kvs.all({ decode: false })) {
       if (key === 'test') continue
       same(key, 'test2')
       const block = await kvs.getBlock('test2')
       _link = link
       assert.ok(link.equals(await block.cid()))
     }
-    for await (const [key, block] of kvs.all({ blocks: true })) {
+    for await (const [key, block] of kvs.all({ blocks: true, decode: false })) {
       if (key === 'test') continue
       same(key, 'test2')
       assert.ok(_link.equals(await block.cid()))
     }
     const kvs2 = await kvs.commit()
     await kvs.del('test2')
-    for await (const [key] of kvs.all()) {
+    for await (const [key] of kvs.all({ decode: false })) {
       if (key === 'test2') throw new Error('deleted key is in all iterator')
     }
     kvs2.del('test2')
-    for await (const [key, link] of kvs2.all()) {
+    for await (const [key, link] of kvs2.all({ decode: false })) {
       assert.ok(isCID(link))
       same(key, 'test')
       assert.ok(link.equals(await hello.cid()))
+    }
+
+    for await (const [, obj] of kvs2.all()) {
+      same(obj, { hello: 'world' })
     }
   })
 

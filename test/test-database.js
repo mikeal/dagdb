@@ -100,6 +100,14 @@ describe('test-database', () => {
     }
   })
 
+  test('all()', async () => {
+    const db = await basics()
+    for await (const [key, value] of db.all()) {
+      same(value, { hello: 'world' })
+      same(key, 'test')
+    }
+  })
+
   // errors
 
   /*
