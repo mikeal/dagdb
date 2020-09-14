@@ -115,11 +115,17 @@ const create = (Block) => {
       return ops
     }
 
-    async __encode (block) {
+    async __encode (block, opts = {}) {
       if (!isBlock(block)) {
         let last
         for await (const _block of encode(block)) {
-          if (Block.isBlock(_block)) await this.store.put(_block)
+          if (Block.isBlock(_block)) {
+            if (opts.filter && !(await opts.filter(_block))) {
+              // noop
+            } else {
+              await this.store.put(_block)
+            }
+          }
           last = _block
         }
         block = Block.encoder(last, 'dag-cbor')
@@ -134,12 +140,12 @@ const create = (Block) => {
       return decode(cid, this.store, this.updater)
     }
 
-    async set (key, block) {
+    async set (key, block, opts = {}) {
       if (typeof block === 'undefined') {
         if (typeof key !== 'object') throw new Error('Missing value')
         return Promise.all(Object.entries(key).map(([key, value]) => this.set(key, value)))
       }
-      block = await this.__encode(block)
+      block = await this.__encode(block, opts)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
       this.cache.set(key, [op, block])
     }

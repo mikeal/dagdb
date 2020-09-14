@@ -10,7 +10,7 @@ export default (Block) => {
   const fblDecoder = (root, store) => {
     const get = store.get.bind(store)
     const iter = fbl.read(root, get)
-    iter._dagdb = { v1: 'fbl' }
+    iter._dagdb = { v1: 'fbl', root }
     iter.encode = () => (async function * (r) { yield r })(root)
     iter.read = (...args) => fbl.read(root, get, ...args)
     return iter
@@ -58,7 +58,7 @@ export default (Block) => {
       })
       return link
     }
-    if (typeof value === 'object') {
+    if (value && typeof value === 'object') {
       if (value._dagdb) {
         validate(value, 'DagDB')
         const type = Object.keys(value._dagdb.v1)[0]
@@ -84,13 +84,10 @@ export default (Block) => {
     // root of each each node can be embedded in a parent.
     // This contract MUST be adhered to by all special types.
 
-    /* disabled because of null handling bugs in dag-cbor
-     * can be enabled when we take a newer version of Block and dag-cbor
     if (value === null) {
       yield value
       return
     }
-    */
     if (typeof value === 'object' && typeof value.then === 'function') value = await value
     if (isCID(value)) {
       yield value

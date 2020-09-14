@@ -5,6 +5,7 @@ import createInmemory from '../src/stores/inmemory.js'
 import createKV from '../src/kv.js'
 import assert from 'assert'
 
+const { CID } = Block
 const main = mainModule(Block)
 const inmem = createInmemory(Block)
 const kv = createKV(Block)
@@ -147,5 +148,34 @@ describe('test-values', () => {
     db = await db.update()
     val = await db.get('subdb')
     same(val.root.equals((await db.empty()).root), true)
+  })
+
+  test('encode null', async () => {
+    let db = await main.create('inmem')
+    await db.set('test', null)
+    db = await db.update()
+    same(await db.get('test'), null)
+  })
+
+  test('stream fbl w/ filter', async () => {
+    const iter = load(Buffer.from('1234'), Buffer.from('5678'))
+    let db = await basics()
+    const filter = async block => {
+      const cid = await block.cid()
+      if (cid.code === 0x55) return false
+      return true
+    }
+    await db.set('test', { stream: iter }, { filter })
+    db = await db.commit()
+    const obj = await db.get('test')
+    const root = obj.stream._dagdb.root
+    await db.set('test2', { two: obj.stream })
+    db = await db.commit()
+    const obj2 = await db.get('test2')
+    same(obj2.two._dagdb.root.equals(root), true)
+    for (const key of db.store.storage.keys()) {
+      const cid = CID.from(key)
+      if (cid.code === 0x55) throw new Error('Raw block should have been filered out')
+    }
   })
 })
