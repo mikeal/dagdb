@@ -60,7 +60,6 @@ export default (Block) => {
     }
     if (value && typeof value === 'object') {
       if (value._dagdb) {
-        validate(value, 'DagDB')
         const type = Object.keys(value._dagdb.v1)[0]
         return types[type](value._dagdb.v1[type], store, updater)
       } else if (Array.isArray(value)) {
