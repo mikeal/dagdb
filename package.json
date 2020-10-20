@@ -43,7 +43,7 @@
       "import": "./src/http/nodejs.js"
     },
     "./": {
-      "import": "./esm/src/"
+      "import": "./src/"
     }
   },
   "dependencies": {
