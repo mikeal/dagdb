@@ -1,4 +1,4 @@
-import { readonly, isCID, validate } from './utils.js'
+import { readonly, isCID } from './utils.js'
 import createFBL from '@ipld/fbl/bare'
 
 const types = {}

@@ -58,6 +58,48 @@ describe('test-database', () => {
     same(await obj.two(), await link())
   })
 
+  test('register custom type', async () => {
+    let db = await basics()
+    class Dog {
+      constructor ({ name, age }) {
+        this.name = name
+        this.age = age
+      }
+
+      get _dagdb () {
+        return { v1: 'dog' }
+      }
+
+      async * encode () {
+        const block = Block.encoder({ ...this }, 'dag-cbor')
+        yield block
+        yield block.cid()
+      }
+
+      static async decode (block) {
+        return new Dog(block.decodeUnsafe())
+      }
+
+      bark () {
+        return `hello from "${this.name}"`
+      }
+    }
+
+    const createDog = async (root, store) => {
+      return Dog.decode(await store.get(root))
+    }
+
+    db.register('dog', createDog)
+
+    const dog = new Dog({ name: 'lucas', age: 8 })
+    await db.set('lucas', dog)
+    db = await db.update()
+
+    const lucas = await db.get('lucas')
+    const bark = lucas.bark()
+    same(bark, 'hello from "lucas"')
+  })
+
   test('update', async () => {
     let { db, updater } = await create()
     await db.set('test', { hello: 'world' })
