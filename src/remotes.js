@@ -78,9 +78,10 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return this.pullDatabase(database, info.strategy)
     }
 
-    async pullDatabase (database) {
-      const info = await this.info
-      const strategy = info.strategy
+    async pullDatabase (database, strategy) {
+      if (!strategy) {
+        strategy = (await this.info).strategy
+      }
       const known = []
       if (this.rootDecode.head) {
         known.push(this.rootDecode.head)
@@ -88,9 +89,9 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
       let cids
       if (strategy.full) {
-        cids = await this.fullMerge(database, known)
+        cids = await this.fullMerge(database, known, strategy.resolver)
       } else if (strategy.keyed) {
-        cids = await this.keyedMerge(database, strategy.keyed, known)
+        cids = await this.keyedMerge(database, strategy.keyed, known, strategy.resolver)
       } /* c8 ignore next */ else {
         /* c8 ignore next */
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
@@ -101,7 +102,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
     }
 
-    async keyedMerge (db, key, known) {
+    async keyedMerge (db, key, known, resolver) {
       const kv = await this.kv
       if (!(await kv.has(key))) {
         await kv.set(key, db)
@@ -110,7 +111,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
         const prevHead = await prev.getHead()
         const dbHead = await db.getHead()
         if (prevHead.equals(dbHead)) return []
-        await prev.pull(db, known)
+        await prev.pull(db, known, resolver)
         const latest = await prev.commit()
         await kv.set(key, latest)
       }
@@ -120,9 +121,9 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return [latest.root]
     }
 
-    async fullMerge (db, known) {
+    async fullMerge (db, known, resolver) {
       const kv = await this.kv
-      await kv.pull(db, known)
+      await kv.pull(db, known, resolver)
       this.rootDecode.head = await db.getHead()
       this.rootDecode.merged = null
       return kv.pendingTransactions()
