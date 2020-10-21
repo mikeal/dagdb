@@ -294,6 +294,46 @@ console.log(await db.get('hello'))
 This feature uses a very flexible system that can be extended in the future to feature
 all kinds of new data types.
 
+### Custom Types
+
+DagDB's support for nesting databases lends itself to support other types of embeddings as well. This is a powerful feature that is used internally to allow embedding of builtin types and classes, but it can also be used to support embedding arbitrary custom types as well.
+
+The API is pretty simple, it requires the caller to specify a `type` string, and an `init` function that takes two arguments, namely the `root` cid of the custom object, and the underlying `store`. For example:
+
+```js
+const initCustomType = async (root, store) => {
+  return new CustomType(await store.get(root))
+}
+```
+
+Additionally, the custom type/object must support the following interface:
+
+```ts
+interface Encoder {
+  _dagdb: { v1: string }
+  encode(): AsyncGenerator<Block | CID>
+}
+```
+
+From the internal docs:
+
+> Encoders, both here and in special types, are async generators that yield as many blocks as they like as long as the very last thing they yield is NOT a Block. This is so that the final root of each each node can be embedded in a parent. This contract MUST be adhered to by all special types. Additionally, the _dagdb property specifies the type name for v1 of the interface (leaving room for future interface changes), and is used to lookup the in memory custom type mapping.
+
+To register the custom type, you simply call `register` on the database:
+
+```js
+let db = await dagdb.create("inmem");
+
+db.register("custom", initCustomType);
+
+const value = new CustomType(...args);
+await db.set("key", value);
+db = await db.update();
+
+const custom = await local.get("key");
+custom.method();
+```
+
 ## Replication
 
 Replication in DagDB is quite different than traditional databases. Since there isn't a client

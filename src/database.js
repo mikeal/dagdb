@@ -50,6 +50,10 @@ export default (Block) => {
       this.Block = Block
     }
 
+    register (type, fn) {
+      return kv.register(type, fn)
+    }
+
     get _dagdb () {
       return { v1: 'database' }
     }
