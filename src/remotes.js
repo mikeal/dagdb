@@ -62,7 +62,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
     }
 
-    async pull () {
+    async pull (resolver) {
       const info = await this.info
       if (info.source.type === 'local') {
         throw new Error('Local remotes must use pullDatabase directly')
@@ -75,13 +75,12 @@ export default (Block, stores, toBlock, updaters, CID) => {
           return root // no changes since last merge
         }
       }
-      return this.pullDatabase(database, info.strategy)
+      return this.pullDatabase(database, resolver)
     }
 
-    async pullDatabase (database, strategy) {
-      if (!strategy) {
-        strategy = (await this.info).strategy
-      }
+    async pullDatabase (database, resolver) {
+      const info = await this.info
+      const strategy = info.strategy
       const known = []
       if (this.rootDecode.head) {
         known.push(this.rootDecode.head)
@@ -89,9 +88,9 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
       let cids
       if (strategy.full) {
-        cids = await this.fullMerge(database, known, strategy.resolver)
+        cids = await this.fullMerge(database, known, resolver)
       } else if (strategy.keyed) {
-        cids = await this.keyedMerge(database, strategy.keyed, known, strategy.resolver)
+        cids = await this.keyedMerge(database, strategy.keyed, known, resolver)
       } /* c8 ignore next */ else {
         /* c8 ignore next */
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
