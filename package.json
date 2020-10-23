@@ -15,13 +15,18 @@
     "test:node-v12": "npm run lint && mocha test/test-*.js && npm run test:cjs && npm run test:browser",
     "coverage": "c8 --reporter=html mocha test/test-*.js && npx st -d coverage -p 8080",
     "docs:dev": "vuepress dev docs",
-    "docs:build": "vuepress build docs"
+    "docs:build": "vuepress build docs",
+    "build:schema": "echo 'export default ' > src/schema.js && ipld-schema to-json Schema.md >> src/schema.js && standard --fix src/schema.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mikeal/dagdb.git"
   },
-  "keywords": ["database", "dag", "decentralized"],
+  "keywords": [
+    "database",
+    "dag",
+    "decentralized"
+  ],
   "author": "Mikeal Rogers <mikeal.rogers@gmail.com> (https://www.mikealrogers.com/)",
   "license": "(Apache-2.0 AND MIT)",
   "bugs": {

@@ -1,4 +1,5 @@
-export default {
+export default
+{
   types: {
     HashMapData: {
       kind: 'list',
@@ -258,6 +259,17 @@ export default {
         }
       }
     },
+    RemoteSource: {
+      kind: 'struct',
+      fields: {
+        type: {
+          type: 'String'
+        }
+      },
+      representation: {
+        map: {}
+      }
+    },
     RemoteInfo: {
       kind: 'struct',
       fields: {
@@ -265,7 +277,7 @@ export default {
           type: 'RemoteMergeStrategy'
         },
         source: {
-          type: 'String'
+          type: 'RemoteSource'
         }
       },
       representation: {

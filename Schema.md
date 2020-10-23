@@ -121,9 +121,13 @@ type RemoteMergeStrategy union {
   | KeyedMerge "keyed"
 } representation keyed
 
+type RemoteSource struct {
+  type String
+}
+
 type RemoteInfo struct {
   strategy RemoteMergeStrategy
-  source String
+  source RemoteSource
 }
 
 type Remote struct {

@@ -9,6 +9,21 @@ export default (Block, stores, toBlock, updaters, CID) => {
   const replicate = createReplicate(Block)
   const exports = {}
 
+  const http = async (info, push = true) => {
+    const resp = await getJSON(info.url)
+    if (push && !resp.updater) throw new Error('Remote must have updater to use push')
+    let root
+    if (resp.root) root = CID.from(resp.root)
+    let url = new URL(resp.blockstore, info.url)
+    const store = await stores.from(url.toString())
+    let updater
+    if (resp.updater) {
+      url = new URL(resp.updater, info.url)
+      updater = await updaters.from(info.url, url.toString())
+    }
+    return { store, updater, root }
+  }
+
   class Remote {
     constructor (obj, db) {
       this.db = db
@@ -23,37 +38,25 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return this._info
     }
 
-    async setStorage (info, resp) {
-      let url = new URL(resp.blockstore, info.source)
-      this.store = await stores.from(url.toString())
-      if (resp.updater) {
-        url = new URL(resp.updater, info.source)
-        this.updater = await updaters.from(info.source, url.toString())
-      }
-    }
-
     async push () {
       const info = await this.info
-      if (info.source === 'local') {
+      if (info.source.type === 'local') {
         throw new Error('Local remotes cannot push')
       }
       if (!info.strategy.full) {
         throw new Error('Can only push databases using full merge strategy')
       }
       const local = this.rootDecode.head
-      const resp = await getJSON(info.source)
-      if (!resp.updater) throw new Error('Remote must have updater to use push')
-      const root = CID.from(resp.root)
 
-      await this.setStorage(info, resp)
+      const { store, updater, root } = await registry[info.source.type](info.source, true)
 
-      const db = new exports.Database(root, this.store)
+      const db = new exports.Database(root, store)
       const head = await db.getHead()
       if (!head.equals(local)) {
         throw new Error('Remote has updated since last pull, re-pull before pushing')
       }
-      await replicate(this.db.root, this.db.store, this.store)
-      const cid = await this.updater.update(this.db.root, root)
+      await replicate(this.db.root, this.db.store, store)
+      const cid = await updater.update(this.db.root, root)
       if (!cid.equals(this.db.root)) {
         throw new Error('Remote has updated since last pull, re-pull before pushing')
       }
@@ -61,14 +64,12 @@ export default (Block, stores, toBlock, updaters, CID) => {
 
     async pull () {
       const info = await this.info
-      if (info.source === 'local') {
+      if (info.source.type === 'local') {
         throw new Error('Local remotes must use pullDatabase directly')
       }
-      const resp = await getJSON(info.source)
-      // TODO: validate response data against a schema
-      const root = CID.from(resp.root)
-      await this.setStorage(info, resp)
-      const database = new exports.Database(root, this.store, this.updater)
+      const { store, updater, root } = await registry[info.source.type](info.source, false)
+
+      const database = new exports.Database(root, store, updater)
       if (this.rootDecode.head) {
         if (this.rootDecode.head.equals(await database.getHead())) {
           return root // no changes since last merge
@@ -144,6 +145,11 @@ export default (Block, stores, toBlock, updaters, CID) => {
 
     async add (name, info = {}) {
       if (typeof info === 'string') {
+        if (info.startsWith('http://') || /* c8 ignore next */ info.startsWith('https://')) {
+          info = { type: 'http', url: info }
+        } else {
+          throw new Error('Only http URL can be used as strings')
+        }
         info = { source: info }
       }
       const defaults = { strategy: { full: true } }
@@ -154,8 +160,8 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return this.pull(name, remote)
     }
 
-    async addLocal (name, strategy) {
-      const info = { strategy, source: 'local' }
+    async addLocal (name, strategy = { full: true }) {
+      const info = { strategy, source: { type: 'local' } }
       const block = toBlock(info, 'RemoteInfo')
       await this.db.store.put(block)
       const remote = new Remote({ info: await block.cid() }, this.db)
@@ -201,7 +207,11 @@ export default (Block, stores, toBlock, updaters, CID) => {
     }
   }
 
+  const registry = { }
+
   exports.Remote = Remote
   exports.Remotes = Remotes
+  exports.register = (name, fn) => { registry[name] = fn }
+  exports.register('http', http)
   return exports
 }

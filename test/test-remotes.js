@@ -109,6 +109,18 @@ describe('test-remotes', () => {
     }
   })
 
+  test('error: invalid http url', async () => {
+    const { db } = await create()
+    let threw = true
+    try {
+      await db.remotes.add('test', 'nope')
+      threw = false
+    } catch (e) {
+      if (e.message !== 'Only http URL can be used as strings') throw e
+    }
+    same(threw, true)
+  })
+
   test('error: no remote', async () => {
     const { db } = await create()
     try {
@@ -156,7 +168,7 @@ describe('test-remotes', () => {
   })
   test('error: bad info, push keyed merge', async () => {
     const { remote } = await createRemotes({ full: true })
-    remote._info = { source: 'http://asdf', strategy: { keyed: 'asdf' } }
+    remote._info = { source: { type: 'http', url: 'http://asdf' }, strategy: { keyed: 'asdf' } }
     try {
       await remote.push()
       throw new Error('did not throw')
@@ -221,7 +233,7 @@ describe('test-remotes', () => {
           })
           test('push', async () => {
             let db = await create()
-            const info = { source: db.updater.infoUrl, strategy: { full: true } }
+            const info = { source: { url: db.updater.infoUrl, type: 'http' }, strategy: { full: true } }
             delete db.updater
             await db.remotes.add('origin', info)
             db = await db.commit()
@@ -243,7 +255,7 @@ describe('test-remotes', () => {
             db1 = await db1.commit()
             updater.root = db1.root
             let db2 = await create()
-            const info = { source: db1.updater.infoUrl, strategy: { full: true } }
+            const info = { source: { url: db1.updater.infoUrl, type: 'http' }, strategy: { full: true } }
             await db2.remotes.add('test', info)
             await db2.remotes.pull('test')
             same(await db2.get('foo'), 'bar')
@@ -259,7 +271,7 @@ describe('test-remotes', () => {
             let db = await create()
             const oldRoot = db.root
             const db2 = await create()
-            const info = { source: db.updater.infoUrl, strategy: { full: true } }
+            const info = { source: { url: db.updater.infoUrl, type: 'http' }, strategy: { full: true } }
             delete db.updater
             await db.remotes.add('origin', info)
             db = await db.commit()
@@ -273,10 +285,10 @@ describe('test-remotes', () => {
             } catch (e) {
               if (e.message !== 'Remote has updated since last pull, re-pull before pushing') throw e
             }
-            const url = info.source
+            const { url } = info.source
             const split = url.split('/').filter(x => x)
             const id = split[split.length - 1]
-            const root = CID.from((await getJSON(info.source)).root)
+            const root = CID.from((await getJSON(info.source.url)).root)
             const updater = { root, update: () => oldRoot }
             updaters[id] = updater
             try {
@@ -292,7 +304,7 @@ describe('test-remotes', () => {
             const url = db.updater.infoUrl
             const split = url.split('/').filter(x => x)
             const id = split[split.length - 1]
-            const info = { source: url, strategy: { full: true } }
+            const info = { source: { url, type: 'http' }, strategy: { full: true } }
             await db.remotes.add('origin', info)
             await db.set('blah', 'test')
             db = await db.update()
