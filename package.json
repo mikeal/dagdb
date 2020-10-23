@@ -21,7 +21,7 @@
     "type": "git",
     "url": "git+https://github.com/mikeal/dagdb.git"
   },
-  "keywords": [],
+  "keywords": ["database", "dag", "decentralized"],
   "author": "Mikeal Rogers <mikeal.rogers@gmail.com> (https://www.mikealrogers.com/)",
   "license": "(Apache-2.0 AND MIT)",
   "bugs": {
@@ -41,9 +41,6 @@
     },
     "./server": {
       "import": "./src/http/nodejs.js"
-    },
-    "./": {
-      "import": "./src/"
     }
   },
   "dependencies": {
@@ -54,17 +51,18 @@
     "charwise": "^3.0.1",
     "datastore-car": "^1.2.0",
     "encoding-down": "^6.3.0",
+    "git-remote-origin-url": "^3.1.0",
     "iamap": "mikeal/iamap#uint8array",
     "level-js": "^5.0.2",
     "levelup": "^4.4.0",
-    "lru-cache": "^6.0.0",
-    "murmurhash3js-revisited": "^3.0.0",
     "lfs-store": "^0.0.8",
-    "git-remote-origin-url": "^3.1.0"
+    "lru-cache": "^6.0.0",
+    "murmurhash3js-revisited": "^3.0.0"
   },
   "devDependencies": {
     "aws-config": "^1.4.0",
     "aws-sdk": "^2.751.0",
+    "c8": "^7.3.0",
     "hundreds": "0.0.8",
     "ipld-schema": "^0.3.2",
     "memdown": "^5.1.0",
@@ -72,8 +70,7 @@
     "polendina": "^1.1.0",
     "standard": "^14.3.4",
     "tap": "^14.10.8",
-    "vuepress": "^1.5.4",
     "tempy": "^0.7.0",
-    "c8": "^7.3.0"
+    "vuepress": "^1.5.4"
   }
 }
