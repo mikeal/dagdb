@@ -46,6 +46,12 @@
     },
     "./server": {
       "import": "./src/http/nodejs.js"
+    },
+    "./database": {
+      "import": "./src/database.js"
+    },
+    "./lru": {
+      "import": "./src/stores/lru.js"
     }
   },
   "dependencies": {
