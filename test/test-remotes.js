@@ -176,6 +176,12 @@ describe('test-remotes', () => {
       if (e.message !== 'Can only push databases using full merge strategy') throw e
     }
   })
+  test('custom remote', async () => {
+    // a bit of a hack, we'll want a better test eventually
+    // that actually does a full replication
+    const { db } = await create()
+    db.remotes.register('test', () => {})
+  })
   if (!process.browser) {
     const stores = {}
     const updaters = {}
