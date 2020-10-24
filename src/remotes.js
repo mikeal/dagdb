@@ -205,6 +205,10 @@ export default (Block, stores, toBlock, updaters, CID) => {
       await Promise.all(promises)
       return last.cid()
     }
+
+    register (name, fn) {
+      exports.register(name, fn)
+    }
   }
 
   const registry = { }
