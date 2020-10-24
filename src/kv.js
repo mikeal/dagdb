@@ -377,7 +377,7 @@ const create = (Block) => {
         continue
       }
       // there's a conflict, pass it to the resolver
-      ops.set(key, resolver(oldOps, newOps, get))
+      ops.set(key, await resolver(oldOps, newOps, get))
     }
     return ops
   }
