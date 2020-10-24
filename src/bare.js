@@ -1,7 +1,8 @@
-import createDatabase from './database.js'
+import { CID } from 'multiformats'
+import database from './database.js'
 import bent from 'bent'
-import createStores from './stores/index.js'
-import createUpdaters from './updaters/index.js'
+import stores from './stores/index.js'
+import updaters from './updaters/index.js'
 
 const getJSON = bent('json')
 
@@ -10,12 +11,8 @@ const isHttp = id => {
   return id.startsWith('http://') || id.startsWith('https://')
 }
 
-export default (Block, opts = {}) => {
+export default (opts = {}) => {
   const { lfs, fileUpdater, commit } = opts
-  const { CID } = Block
-  const database = createDatabase(Block)
-  const stores = createStores(Block)
-  const updaters = createUpdaters(Block)
   const getInfo = async (id, ...args) => {
     const info = await getJSON(id)
     if (!id.endsWith('/')) id += '/'
