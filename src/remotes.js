@@ -62,7 +62,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
     }
 
-    async pull () {
+    async pull (resolver) {
       const info = await this.info
       if (info.source.type === 'local') {
         throw new Error('Local remotes must use pullDatabase directly')
@@ -75,10 +75,10 @@ export default (Block, stores, toBlock, updaters, CID) => {
           return root // no changes since last merge
         }
       }
-      return this.pullDatabase(database, info.strategy)
+      return this.pullDatabase(database, resolver)
     }
 
-    async pullDatabase (database) {
+    async pullDatabase (database, resolver) {
       const info = await this.info
       const strategy = info.strategy
       const known = []
@@ -88,9 +88,9 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
       let cids
       if (strategy.full) {
-        cids = await this.fullMerge(database, known)
+        cids = await this.fullMerge(database, known, resolver)
       } else if (strategy.keyed) {
-        cids = await this.keyedMerge(database, strategy.keyed, known)
+        cids = await this.keyedMerge(database, strategy.keyed, known, resolver)
       } /* c8 ignore next */ else {
         /* c8 ignore next */
         throw new Error(`Unknown strategy '${JSON.stringify(strategy)}'`)
@@ -101,7 +101,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
     }
 
-    async keyedMerge (db, key, known) {
+    async keyedMerge (db, key, known, resolver) {
       const kv = await this.kv
       if (!(await kv.has(key))) {
         await kv.set(key, db)
@@ -110,7 +110,7 @@ export default (Block, stores, toBlock, updaters, CID) => {
         const prevHead = await prev.getHead()
         const dbHead = await db.getHead()
         if (prevHead.equals(dbHead)) return []
-        await prev.pull(db, known)
+        await prev.pull(db, known, resolver)
         const latest = await prev.commit()
         await kv.set(key, latest)
       }
@@ -120,9 +120,9 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return [latest.root]
     }
 
-    async fullMerge (db, known) {
+    async fullMerge (db, known, resolver) {
       const kv = await this.kv
-      await kv.pull(db, known)
+      await kv.pull(db, known, resolver)
       this.rootDecode.head = await db.getHead()
       this.rootDecode.merged = null
       return kv.pendingTransactions()
@@ -173,11 +173,11 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return this._get(name, Remote, 'Remote')
     }
 
-    async pull (name, remote) {
+    async pull (name, remote, resolver) {
       if (!remote) {
         remote = await this.get(name)
       }
-      await remote.pull()
+      await remote.pull(resolver)
       this.pending.set(name, remote)
     }
 
@@ -204,6 +204,10 @@ export default (Block, stores, toBlock, updaters, CID) => {
       }
       await Promise.all(promises)
       return last.cid()
+    }
+
+    register (name, fn) {
+      exports.register(name, fn)
     }
   }
 
