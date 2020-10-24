@@ -173,11 +173,11 @@ export default (Block, stores, toBlock, updaters, CID) => {
       return this._get(name, Remote, 'Remote')
     }
 
-    async pull (name, remote) {
+    async pull (name, remote, resolver) {
       if (!remote) {
         remote = await this.get(name)
       }
-      await remote.pull()
+      await remote.pull(resolver)
       this.pending.set(name, remote)
     }
 
