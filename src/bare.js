@@ -31,17 +31,11 @@ export default (Block, opts = {}) => {
     return { store, updater }
   }
   const open = async (id, ...args) => {
-    /* c8 ignore next */
     if (id === 'github-action') {
-      /* c8 ignore next */
       const store = await lfs()
-      /* c8 ignore next */
       const updater = await fileUpdater('./root.cid')
-      /* c8 ignore next */
       updater.onUpdate = commit
-      /* c8 ignore next */
       return database(updater.root, store, updater)
-      /* c8 ignore next */
     }
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
@@ -64,17 +58,11 @@ export default (Block, opts = {}) => {
     throw new Error('Not implemented') /* c8 ignore next */
   }
   const create = async (id, ...args) => {
-    /* c8 ignore next */
     if (id === 'github-action') {
-      /* c8 ignore next */
       const store = await lfs()
-      /* c8 ignore next */
       const updater = await fileUpdater('./root.cid', { commit: true })
-      /* c8 ignore next */
       updater.onUpdate = commit
-      /* c8 ignore next */
       return database.create(store, updater)
-      /* c8 ignore next */
     }
     if (isHttp(id)) {
       const { info, store, updater } = await getInfo(id, ...args)
@@ -95,7 +83,7 @@ export default (Block, opts = {}) => {
         updater = await updaters.create(id, ...args)
       }
       return database.create(store, updater, ...args)
-    } /* c8 ignore next */
+    }
   }
   return { create, open }
 }

@@ -35,6 +35,9 @@
   "c8": {
     "exclude": [
       "src/updaters/commit.js",
+      "src/updaters/file.js",
+      "src/stores/lfs.js",
+      "src/bare.js",
       "test*"
     ]
   },

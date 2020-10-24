@@ -85,7 +85,7 @@ if (process.browser) {
   describe('browser', () => {
     addTests(() => ({ browser: true, updateKey: rand() }))
   })
-} else {
+} else if (process.GITHUB_WORKFLOW) {
   let tempy
   before(async () => {
     tempy = (await import('tempy')).default
