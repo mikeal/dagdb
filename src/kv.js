@@ -417,6 +417,7 @@ const create = (Block) => {
       let { head, prev, ops } = decoded['kv-v1']
       if (head.equals(common)) return _ops
       ops = ops.map(op => get(op))
+      if (!prev) return [...ops, ..._ops]
       return since(await get(prev), [...ops, ..._ops])
     }
 

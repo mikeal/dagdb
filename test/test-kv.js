@@ -191,6 +191,26 @@ describe('test-kv', () => {
     same(decoded, { hello: 'world', pass: true })
   })
 
+  test('pull into empty', async () => {
+    const { kvs } = await create(kv)
+    let kv1 = kvs
+    let kv2 = kvs
+    await kv1.set('hello', 'world')
+    kv1 = await kv1.commit()
+    await kv1.set('hello', 'world')
+    kv1 = await kv1.commit()
+    // Would throw if we didn't check for null "prev" trans in kv.pull
+    await kv2.pull(kv1)
+    kv2 = await kv2.commit()
+    let found = false
+    for await (const [key, link] of kv2.all({ decode: false })) {
+      const block = await kv1.getBlock(key)
+      assert.ok(link.equals(await block.cid()))
+      found = true
+    }
+    assert.ok(found)
+  })
+
   test('object set, multiget', async () => {
     let db = await basics()
     let threw = true
