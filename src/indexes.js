@@ -1,7 +1,10 @@
-import { validate, chain } from './utils.js'
-import { fromBlock, toBlock } from './block.js'
-import { toString } from 'multiformats/bytes'
-import * as hamt from './hamt.js'
+import { chain } from './utils.js'
+import { encoder, toBlock } from './block.js'
+import { bytes } from 'multiformats'
+import * as hamt from 'hamt-utils'
+import kv from './kv.js'
+
+const { toString } = bytes
 
 // We need singletons on instances for things you can only get async.
 // The only good way to do that is by caching the promises and only
@@ -79,12 +82,12 @@ const updatePropIndex = async function * (prop, ops) {
     return
   }
   let last
-  for await (const block of hamt.bulk(hamtRoot, updates, getBlock, Block)) {
+  for await (const block of hamt.bulk(hamtRoot, updates, getBlock)) {
     yield block
     last = block
   }
   root.map = await last.cid()
-  const newRootBlock = toBlock(root, 'PropIndex')
+  const newRootBlock = await toBlock(root, 'PropIndex')
   yield newRootBlock
   prop.newRootBlock = newRootBlock
 }
@@ -100,7 +103,7 @@ class Prop {
     chain(this, props)
     this.root = root.then ? root : new Promise(resolve => resolve(root))
     lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
-    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
+    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.value))
     this.name = name
     this.props = props
   }
@@ -112,11 +115,11 @@ class Prop {
   async update (ops) {
     let root = await this.root
     const blocks = []
-    ops = ops.map(op => op.decodeUnsafe())
+    ops = ops.map(op => op.value)
     let prop = this
     if (this.newRootBlock) {
-      if (!ops.length) return this.newRootBlock.cid()
-      root = await this.newRootBlock.cid()
+      if (!ops.length) return this.newRootBlock.cid
+      root = this.newRootBlock.cid
       prop = new Prop(this.props, root, this.name)
     }
     for await (const block of prop.updateIndex(ops)) {
@@ -135,7 +138,7 @@ class Prop {
 }
 Prop.create = (props, name) => {
   const prop = new Prop(props, emptyProp.then(block => block.cid()), name)
-  prop._rootData = emptyProp.then(block => block.decode())
+  prop._rootData = emptyProp.then(block => block.value)
   return prop
 }
 
@@ -202,7 +205,7 @@ class Props {
     this.indexes = indexes
     lazyprop(this, 'root', () => indexes.rootData.then(data => data.props))
     lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
-    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
+    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.value))
     this.pending = new Map()
   }
 
@@ -296,7 +299,7 @@ class Props {
     const props = await this._all()
     const _update = async ([key, prop]) => prop.update(ops).then(cid => [key, cid])
     const results = await Promise.all(props.map(_update))
-    const block = toBlock(Object.fromEntries(results), 'Props')
+    const block = await toBlock(Object.fromEntries(results), 'Props')
     await this.store.put(block)
     return block.cid()
   }
@@ -308,7 +311,7 @@ class Indexes {
     lazyprop(this, 'kvroot', () => db.getRoot().then(root => root['db-v1'].kv))
     lazyprop(this, 'root', () => db.getRoot().then(root => root['db-v1'].indexes))
     lazyprop(this, 'rootBlock', () => this.root.then(cid => this.getBlock(cid)))
-    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.decode()))
+    lazyprop(this, 'rootData', () => this.rootBlock.then(block => block.value))
     this.props = new Props(this)
   }
 
@@ -328,7 +331,7 @@ class Indexes {
     return newRoot.cid()
   }
 }
-const emptyMap = Block.encoder({}, 'dag-cbor')
+const emptyMap = encoder({})
 const emptyIndexes = emptyMap.cid().then(props => toBlock({ props }, 'Indexes'))
 const empties = [emptyIndexes, emptyMap, emptyProp]
 

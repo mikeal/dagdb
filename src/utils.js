@@ -1,11 +1,6 @@
-import * as hamt from './hamt.js'
-import schema from './schema.js'
-import createValidate from '@ipld/schema-validation'
-
+import { fromBlock } from './block.js'
+import * as hamt from 'hamt-utils'
 const isCID = node => node.asCID === node
-const validate = createValidate(schema)
-
-onst fromBlockUnsafe = (block, className) => validate(block.decodeUnsafe(), className)
 
 const readonly = (source, key, value) => {
   Object.defineProperty(source, key, { value, writable: false })
@@ -27,7 +22,7 @@ const encoderTransaction = async function * (iter) {
     last = block
     yield block
   }
-  yield last.cid()
+  yield last.cid
 }
 
 class Lazy {
@@ -57,4 +52,4 @@ const chain = (child, parent) => {
   readonly(child, 'getBlock', parent.getBlock || parent.store.get.bind(parent.store))
 }
 
-export { Lazy, NotFound, readonly, fromBlock, fromBlockUnsafe, validate, encoderTransaction, chain, isCID }
+export { Lazy, NotFound, readonly, encoderTransaction, chain, isCID }

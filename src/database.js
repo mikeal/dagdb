@@ -1,10 +1,7 @@
-import { validate, readonly } from './utils.js'
-import { CID } from 'multiformats'
+import { readonly } from './utils.js'
 import kv from './kv.js'
-import stores from './stores/index.js'
-import updaters from './updaters/index.js'
-import { Remotes, Remote } = './remotes.js'
-import { Indexes } = './indexes.js'
+import { Remotes, Remote } from './remotes.js'
+import { Indexes, empties as indexEmpties } from './indexes.js'
 import { toBlock, fromBlock } from './block.js'
 
 const databaseEncoder = async function * (db) {
@@ -38,7 +35,6 @@ class Database {
     readonly(this, '_kv', this.getRoot().then(r => kv(r['db-v1'].kv, store)))
     this.remotes = new Remotes(this)
     this.indexes = new Indexes(this)
-    this.Block = Block
   }
 
   register (type, fn) {
@@ -62,9 +58,9 @@ class Database {
     root['db-v1'].kv = kv.root
     root['db-v1'].remotes = await this.remotes.update(kv.root)
     root['db-v1'].indexes = await this.indexes.update(kv.root)
-    const block = toBlock(root, 'Database')
+    const block = await toBlock(root, 'Database')
     await this.store.put(block)
-    return new Database(await block.cid(), this.store, this.updater)
+    return new Database(block.cid, this.store, this.updater)
   }
 
   async getHead () {
@@ -157,30 +153,30 @@ class Database {
 
   async empty () {
     const block = await empty
-    return new Database(await block.cid(), this.store)
+    return new Database(block.cid, this.store)
   }
 }
 
-remoteExports.Database = Database
 const exports = (...args) => new Database(...args)
 
 // empty database
 const empty = (async () => {
   const [kvBlock, hamtBlock] = await Promise.all(kv.empties)
-  const [kvCID, hamtCID] = await Promise.all([kvBlock.cid(), hamtBlock.cid()])
-  const [indexesBlock] = await Promise.all(indexExports.empties)
-  const indexes = await indexesBlock.cid()
+  const [kvCID, hamtCID] = [kvBlock.cid, hamtBlock.cid]
+  const [indexesBlock] = await Promise.all(indexEmpties)
+  const indexes = indexesBlock.cid
   return toBlock({ 'db-v1': { kv: kvCID, remotes: hamtCID, indexes } }, 'Database')
 })()
-exports.empties = [empty, ...kv.empties, ...indexExports.empties]
+exports.empties = [empty, ...kv.empties, ...indexEmpties]
 exports.create = async (store, updater) => {
   const empties = await Promise.all(exports.empties)
   await Promise.all(empties.map(b => store.put(b)))
-  const root = await empties[0].cid()
+  const root = await empties[0].cid
   await updater.update(root)
   return new Database(root, store, updater)
 }
 exports.Remote = Remote
+exports.Database = Database
 kv.register('database', exports)
 
 export default exports
