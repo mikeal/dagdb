@@ -14,7 +14,7 @@ class LRUStore {
 
   async get (cid) {
     if (!this.lru) return this._getBlock(cid)
-    const key = cid.toString('base32')
+    const key = cid.toString()
     if (this.lru.has(key)) return this.lru.get(key)
     const block = await this._getBlock(cid)
     this.lru.set(key, block)
@@ -23,7 +23,7 @@ class LRUStore {
 
   async put (block) {
     if (!this.lru) return this._putBlock(block)
-    const key = (await block.cid()).toString('base32')
+    const key = block.cid.toString()
     if (this.lru.has(key)) return
     const ret = await this._putBlock(block)
     this.lru.set(key, block)
@@ -32,8 +32,8 @@ class LRUStore {
 
   has (cid) {
     if (!this.lru) return this._hasBlock(cid)
-    const key = cid.toString('base32')
-    if (this.lru.has(key)) return { length: this.lru.get(key).decodeUnsafe().length }
+    const key = cid.toString()
+    if (this.lru.has(key)) return { length: this.lru.get(key).bytes.byteLength }
     return this._hasBlock(cid)
   }
 }

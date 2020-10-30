@@ -16,13 +16,13 @@ const getUser = str => {
   /* c8 ignore next */
 }
 
-export default (Block, opts = {}) => {
+export default (opts = {}) => {
   const lru = new LRU({ ...defaults, ...opts })
   return async (filepath = './blockstore.ipld-lfs', repo, user, token, disableCache) => {
     if (!repo) repo = await getRepo()
     if (!user) user = process.env.GITHUB_ACTOR /* c8 ignore next */ || getUser(repo)
     if (!token) token = /* c8 ignore next */ process.env.GHTOKEN || /* c8 ignore next */ process.env.GITHUB_TOKEN
-    const store = await lfs(Block, filepath, repo, user, token)
+    const store = await lfs(filepath, repo, user, token)
     const get = async cid => {
       const key = cid.toString()
       if (!disableCache && lru.has(key)) return lru.get(key)

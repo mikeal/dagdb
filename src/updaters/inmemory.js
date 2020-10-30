@@ -1,15 +1,14 @@
-export default CID => {
-  let current
-  class Inmem {
-    update (_current, old) {
-      if (!old && !current) this.current = _current
-      else if (this.current.equals(old)) this.current = _current
-      return this.current
-    }
-
-    get root () {
-      return this.current
-    }
+class Inmem {
+  update (_current, old) {
+    if (!old && !this.current) this.current = _current
+    else if (this.current.equals(old)) this.current = _current
+    return this.current
   }
-  return new Inmem()
+
+  get root () {
+    return this.current
+  }
 }
+
+const create = () => new Inmem()
+export default create

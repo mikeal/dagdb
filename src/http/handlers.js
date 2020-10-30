@@ -1,9 +1,11 @@
+import { create } from '../block.js'
+import { CID } from 'multiformats'
+
 const jsonHeaders = body => {
   return { 'content-length': body.length, 'content-type': 'application/json' }
 }
 
-const blockstore = (Block, store) => {
-  const { CID } = Block
+const blockstore = (store) => {
   const handler = async opts => {
     let { method, path, params, body } = opts
     if (!method) throw new Error('Missing required param "method"')
@@ -39,19 +41,18 @@ const blockstore = (Block, store) => {
           throw e
           /* c8 ignore next */
         }
-        const body = block.encodeUnsafe()
-        return { headers: { 'content-length': body.length }, body }
+        const body = block.bytes
+        return { headers: { 'content-length': body.byteLength }, body }
       }
     } else if (method === 'PUT') {
       if (path.includes('/')) throw new Error('Path for block writes must not include slashes')
-      const cid = CID.from(path)
-      const block = Block.create(body, cid)
-      await block.validate()
+      const cid = CID.parse(path)
+      const block = await create({ bytes: body, cid })
       await store.put(block)
       return { statusCode: 201 }
     } else if (method === 'HEAD') {
       if (path.includes('/')) throw new Error('Path for block retreival must not include slashes')
-      const cid = CID.from(path)
+      const cid = CID.parse(path)
       const has = await store.has(cid)
       if (!has) return { statusCode: 404 }
       if (has.length) return { headers: { 'content-length': has.length } }
@@ -77,13 +78,12 @@ const info = (store, updater, ext) => async opts => {
   return ret
 }
 
-const updater = (Block, updater) => async opts => {
-  const { CID } = Block
+const updater = (updater) => async opts => {
   if (!opts.params.new) throw new Error('Missing required param "new"')
-  opts.params.new = CID.from(opts.params.new)
+  opts.params.new = CID.parse(opts.params.new)
   if (opts.params.old) opts.params.old = CID.from(opts.params.old)
   const cid = await updater.update(opts.params.new, opts.params.old)
-  const body = Buffer.from(JSON.stringify({ root: cid.toString('base32') }))
+  const body = Buffer.from(JSON.stringify({ root: cid.toString() }))
   const ret = { headers: jsonHeaders(body), body }
   return ret
 }

@@ -1,4 +1,4 @@
-import { encode, decode } from 'multiformats/block'
+import { encode, decode, create as _create } from 'multiformats/block'
 import * as codec from '@ipld/dag-cbor'
 import { sha256 as hasher } from 'multiformats/hashes/sha2'
 import schema from './schema.js'
@@ -15,5 +15,6 @@ const toBlock = (value, className) => {
 
 const encoder = value => encode({ value, hasher, codec })
 const decoder = bytes => decode({ bytes, hasher, codec })
+const create = ({ cid, bytes }) => _create({ cid, bytes, hasher, codec })
 
-export { toBlock, fromBlock, encoder, decoder, validate }
+export { toBlock, fromBlock, encoder, decoder, validate, create }

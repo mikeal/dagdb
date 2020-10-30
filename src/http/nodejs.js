@@ -27,9 +27,9 @@ const handler = async (req, res, _handler) => {
   res.end(result.body ? Buffer.from(result.body) : undefined)
 }
 
-const createHandler = (Block, store, _updater, infoOpts = {}) => {
-  const blockstoreHandler = blockstore(Block, store)
-  const updaterHandler = updater(Block, _updater)
+const createHandler = (store, _updater, infoOpts = {}) => {
+  const blockstoreHandler = blockstore(store)
+  const updaterHandler = updater(_updater)
   const infoHandler = info(store, _updater)
   const _handler = (req, res, basepath = '') => {
     if (req.url === basepath || req.url === basepath + '/') {
