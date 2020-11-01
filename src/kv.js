@@ -311,10 +311,17 @@ const create = (Block) => {
           const [old] = this.cache.get(key)
           const cid = await old.cid()
           if (cid.equals(await op.cid())) continue
-          const newOp = await resolver([old], [op], stackedGet)
+          const [newOp, ...blocks] = await resolver([old], [op], stackedGet)
           const decoded = newOp.decodeUnsafe()
           const value = [newOp]
-          if (decoded.set) value.push(await stackedGet(decoded.set.val))
+          if (decoded.set) {
+            try {
+              value.push(await stackedGet(decoded.set.val))
+            } catch (err) {
+              // Should be included in blocks...
+            }
+          }
+          value.push(...blocks)
           this.cache.set(key, value)
         } else {
           const value = [op]
@@ -356,7 +363,7 @@ const create = (Block) => {
     const ops = new Map()
 
     for (const [key, [oldOps, newOps]] of staging.entries()) {
-      const accept = () => ops.set(key, newOps[newOps.length - 1])
+      const accept = () => ops.set(key, [newOps[newOps.length - 1]])
       // ignore keys that only have local history
       if (!newOps.length) continue
       // accept right away if there are no local changes to conflict with
@@ -415,8 +422,10 @@ const create = (Block) => {
     const since = async (trans, _ops = []) => {
       const decoded = fromBlock(trans, 'Transaction')
       let { head, prev, ops } = decoded['kv-v1']
-      if (head.equals(common)) return _ops
       ops = ops.map(op => get(op))
+      if (head.equals(common)) {
+        return [...ops, ..._ops]
+      }
       return since(await get(prev), [...ops, ..._ops])
     }
 
@@ -425,13 +434,17 @@ const create = (Block) => {
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
     const ops = await reconcile(oldOps, newOps, get, resolver)
     const staged = new Map()
-    for (const [key, op] of ops.entries()) {
+    for (const [key, [op, ...blocks]] of ops.entries()) {
       const decoded = op.decodeUnsafe()
+      const value = [op]
       if (decoded.set) {
-        staged.set(key, [op, await get(decoded.set.val)])
-      } else {
-        staged.set(key, [op])
+        try {
+          value.push(await get(decoded.set.val))
+        } catch (err) {
+          // Should be included in blocks...
+        }
       }
+      staged.set(key, [...value, ...blocks])
     }
     return staged
   }

@@ -77,7 +77,7 @@ describe('test-replication', () => {
     assert(head1.equals(head2))
   })
 
-  const remoteWins = (locals, remotes) => remotes[remotes.length - 1]
+  const remoteWins = (locals, remotes) => [remotes[remotes.length - 1]]
 
   test('remote wins conflict', async () => {
     let [one, two] = await Promise.all([basics(), basics()])
@@ -121,6 +121,84 @@ describe('test-replication', () => {
     same(await one.get('test3'), await two.get('test3'))
 
     two = await two.commit()
+    await two.set('two', { x: 1 })
+    two = await two.commit()
+    await two.set('test3', { foo: 20 })
+    two = await two.commit()
+
+    await one.set('test3', { foo: 22 })
+    one = await one.commit()
+    await one.del('test3')
+    one = await one.commit()
+
+    two.set('test3', { foo: 51 })
+    await two.pull(one, [], remoteWins)
+    same(two.cache.size, 1)
+    same(await two.has('test3'), false)
+    two = await two.commit()
+    same(await two.has('test3'), false)
+  })
+
+  const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
+
+  function createResolver (data) {
+    return async (_locals, remotes, _get) => {
+      const block = Block.encoder(data, 'dag-cbor')
+      const decoded = remotes.pop().decodeUnsafe()
+      const key = getKey(decoded)
+      const val = await block.cid()
+      return [Block.encoder({ set: { key, val } }, 'dag-cbor'), block]
+    }
+  }
+
+  test('new block conflict', async () => {
+    let [one, two] = await Promise.all([basics(), basics()])
+    await one.set('test2', { foo: 'bar' })
+    one = await one.commit()
+    await two.set('test2', { foo: 'bar' })
+    await two.pull(one)
+    two = await two.commit()
+
+    // overwrite cached values
+    await one.set('test3', { foo: 'bar' })
+    one = await one.commit()
+    await two.set('test3', { foo: 1 })
+    try {
+      await two.pull(one)
+    } catch (e) {
+      if (!e.message.startsWith('Conflict')) throw e
+    }
+    await two.pull(one, [], createResolver({ baz: 'one' }))
+    same({ baz: 'one' }, await two.get('test3'))
+    await two.del('test3')
+    await two.pull(one, [], createResolver({ baz: 'two' }))
+    same(two.cache.size, 1)
+    same({ baz: 'two' }, await two.get('test3'))
+
+    // overwrite written conlict
+    const _two = two
+    await two.set('test3', { foo: 3 })
+    two = await two.commit()
+    await two.pull(one, [], createResolver({ baz: 'three' }))
+    same(two.cache.size, 1)
+    same({ baz: 'three' }, await two.get('test3'))
+
+    two = _two
+    await two.set('test3', { foo: 7 })
+    two = await two.commit()
+    await two.del('test3')
+    two = await two.commit()
+    await two.pull(one, [], createResolver({ baz: 'four' }))
+    same(two.cache.size, 1)
+    same({ baz: 'four' }, await two.get('test3'))
+    two = await two.commit()
+
+    // Stores are out of sync due to custom resolver,
+    // pull two into one to sync, or leave it for now
+    // and let it resolve on next pull:
+    // await one.pull(two, [], remoteWins)
+    // one = await one.commit()
+
     await two.set('two', { x: 1 })
     two = await two.commit()
     await two.set('test3', { foo: 20 })
