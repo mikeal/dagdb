@@ -77,7 +77,9 @@ describe('test-replication', () => {
     assert(head1.equals(head2))
   })
 
-  const remoteWins = (locals, remotes) => [remotes[remotes.length - 1]]
+  async function * remoteWins (_locals, remotes, _get) {
+    yield * remotes
+  }
 
   test('remote wins conflict', async () => {
     let [one, two] = await Promise.all([basics(), basics()])
@@ -142,12 +144,13 @@ describe('test-replication', () => {
   const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
   function createResolver (data) {
-    return async (_locals, remotes, _get) => {
+    return async function * (_locals, remotes, _get) {
       const block = Block.encoder(data, 'dag-cbor')
       const decoded = remotes.pop().decodeUnsafe()
       const key = getKey(decoded)
       const val = await block.cid()
-      return [Block.encoder({ set: { key, val } }, 'dag-cbor'), block]
+      yield Block.encoder({ set: { key, val } }, 'dag-cbor')
+      yield block
     }
   }
 

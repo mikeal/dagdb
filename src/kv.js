@@ -4,6 +4,7 @@ import {
   fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
 } from './utils.js'
+import all from 'it-all' // TODO: Remove this dep!
 import valueLoader from './values.js'
 
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
@@ -311,7 +312,7 @@ const create = (Block) => {
           const [old] = this.cache.get(key)
           const cid = await old.cid()
           if (cid.equals(await op.cid())) continue
-          const [newOp, ...blocks] = await resolver([old], [op], stackedGet)
+          const [newOp, ...blocks] = await all(resolver([old], [op], stackedGet))
           const decoded = newOp.decodeUnsafe()
           const value = [newOp]
           if (decoded.set) {
@@ -384,7 +385,7 @@ const create = (Block) => {
         continue
       }
       // there's a conflict, pass it to the resolver
-      ops.set(key, await resolver(oldOps, newOps, get))
+      ops.set(key, await all(resolver(oldOps, newOps, get)))
     }
     return ops
   }
