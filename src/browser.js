@@ -1,4 +1,4 @@
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import bare from './bare.js'
 
 const mod = bare(Block)

@@ -2,7 +2,7 @@ import { promises as fs, createWriteStream } from 'fs'
 
 import { options } from '../car.js'
 import carfile from 'datastore-car'
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import createDatabase from '../database.js'
 
 const database = createDatabase(Block)
