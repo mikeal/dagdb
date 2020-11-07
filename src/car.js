@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs'
 import carfile from 'datastore-car'
 import createInmemory from './stores/inmemory.js'
-import Block from '@ipld/block/defaults.js'
+import Block from '@ipld/block/defaults'
 import mkdatabase from './database.js'
 import path from 'path'
 
