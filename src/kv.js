@@ -4,8 +4,8 @@ import {
   fromBlock, fromBlockUnsafe, validate,
   encoderTransaction
 } from './utils.js'
-import all from 'it-all' // TODO: Remove this dep!
 import valueLoader from './values.js'
+import createStaging from './stores/staging.js'
 
 const getKey = decoded => decoded.set ? decoded.set.key : decoded.del.key
 
@@ -41,6 +41,7 @@ const create = (Block) => {
   const { encode, decode, register } = valueLoader(Block)
   const { toString } = Block.multiformats.bytes
   const toBlock = (value, className) => Block.encoder(validate(value, className), 'dag-cbor')
+  const staging = createStaging(Block)
 
   const commitKeyValueTransaction = async function * (opBlocks, root, get) {
     const rootBlock = await get(root)
@@ -75,12 +76,7 @@ const create = (Block) => {
 
   const commitTransaction = async function * (trans) {
     const root = trans.root
-    const ops = []
-    for (const [op, ...blocks] of trans.cache.values()) {
-      ops.push(op)
-      yield op
-      yield * blocks
-    }
+    const ops = [...trans.cache.values()]
     if (!ops.length) throw new Error('There are no pending operations to commit')
     yield * commitKeyValueTransaction(ops, root, trans.store.get.bind(trans.store))
   }
@@ -88,7 +84,7 @@ const create = (Block) => {
   class Transaction {
     constructor (root, store) {
       readonly(this, 'root', root)
-      this.store = store
+      this.store = staging(store) // default to inmemory staging area
       this.cache = new Map()
     }
 
@@ -148,16 +144,18 @@ const create = (Block) => {
       }
       block = await this.__encode(block, opts)
       const op = toBlock({ set: { key, val: await block.cid() } }, 'Operation')
-      this.cache.set(key, [op, block])
+      await this.store.put(op)
+      this.cache.set(key, op)
     }
 
     async pendingTransactions () {
-      return Promise.all(Array.from(this.cache.values()).map(x => x[0].cid()))
+      return Promise.all(Array.from(this.cache.values()).map(x => x.cid()))
     }
 
     async del (key) {
       const op = toBlock({ del: { key } }, 'Operation')
-      this.cache.set(key, [op])
+      await this.store.put(op)
+      this.cache.set(key, op)
     }
 
     all (opts) {
@@ -166,7 +164,8 @@ const create = (Block) => {
       const _decode = block => decode(block.decode(), this.store, this.updater)
       const iter = async function * (t) {
         const head = await t.getHead()
-        for (const [key, [, block]] of t.cache.entries()) {
+        for (const [key, op] of t.cache.entries()) {
+          const block = await __extract(op, get)
           if (!block) continue
           if (opts.decode) yield [key, _decode(block)]
           else if (opts.blocks) yield [key, block]
@@ -185,9 +184,9 @@ const create = (Block) => {
       return iter(this)
     }
 
-    __get (key) {
+    async __get (key) {
       if (this.cache.has(key)) {
-        const [, block] = this.cache.get(key)
+        const block = await __extract(this.cache.get(key), this.store.get.bind(this.store))
         if (!block) throw new NotFound(`No key named "${key}"`)
         return block
       }
@@ -200,15 +199,17 @@ const create = (Block) => {
     }
 
     async getBlock (key) {
-      if (this.__get(key)) return this.__get(key)
+      let cached = await this.__get(key)
+      if (cached) return cached
       const head = await this.getHead()
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
       if (!link) throw new NotFound(`No key named "${key}"`)
       const block = await this.store.get(link)
 
       // one last cache check since there was async work
+      cached = await this.__get(key)
       /* c8 ignore next */
-      if (this.__get(key)) return this.__get(key)
+      if (cached) return cached
       // workaround, fixed in Node.js v14.5.0
       /* c8 ignore next */
       return block
@@ -236,8 +237,9 @@ const create = (Block) => {
 
     async has (key) {
       if (this.cache.has(key)) {
-        if (this.cache.get(key).length === 1) return false
-        return true
+        const op = this.cache.get(key)
+        const decoded = op.decodeUnsafe()
+        return decoded.del === undefined
       }
       const head = await this.getHead()
       const link = await hamt.get(head, key, this.store.get.bind(this.store))
@@ -256,12 +258,17 @@ const create = (Block) => {
     }
 
     async commit () {
+      // Move all staged blocks into main
+      this.store = await this.store.merge()
       const pending = []
       const _commit = commitTransaction(this)
       let last
       for await (const block of _commit) {
+        // Force any remaining blocks into main. This leads to many
+        // duplicate puts to our store, which isn't terrible, but is
+        // inefficient if we can find cleanup where they all come from.
+        pending.push(this.store.put(block, true))
         last = block
-        pending.push(this.store.put(block))
       }
       await Promise.all(pending)
       return new Transaction(await last.cid(), this.store)
@@ -289,17 +296,7 @@ const create = (Block) => {
       if (trans._kv) {
         return this.pull(await trans._kv, known, resolver)
       }
-      // we need to make all the cached blocks accessible
-      // to the resolver
-      const _blocks = new Map()
-      for (const [, block] of this.cache.values()) {
-        if (block) _blocks.set(await block.cid().then(cid => cid.toString('base64')), block)
-      }
-      const local = async cid => {
-        const key = cid.toString('base64')
-        if (_blocks.has(key)) return _blocks.get(key)
-        return this.store.get(cid)
-      }
+      const local = this.store.get.bind(this.store)
       const remote = trans.store.get.bind(trans.store)
       const oldRoot = this.root
       const newRoot = trans.root
@@ -307,36 +304,41 @@ const create = (Block) => {
       const staged = await replicate(oldRoot, newRoot, stackedGet, resolver, known)
       // now merge the latest options for each key from the remote
       // into the local cache for the transaction
-      for (const [key, [op, block]] of staged.entries()) {
+      for (const [key, blocks] of staged.entries()) {
+        let op
+        for await (const block of blocks) {
+          // Possible that we have already staged this
+          await this.store.put(block)
+          op = block
+        }
+        const pending = []
         if (this.cache.has(key)) {
-          const [old] = this.cache.get(key)
+          const old = this.cache.get(key)
           const cid = await old.cid()
           if (cid.equals(await op.cid())) continue
-          const [newOp, ...blocks] = await all(resolver([old], [op], stackedGet))
-          const decoded = newOp.decodeUnsafe()
-          const value = [newOp]
-          if (decoded.set) {
-            try {
-              value.push(await stackedGet(decoded.set.val))
-            } catch (err) {
-              // Should be included in blocks...
-            }
+          let last
+          for await (const b of resolver([old], [op], stackedGet)) {
+            // Unlikely that we have already staged this
+            pending.push(this.store.put(b))
+            last = b
           }
-          value.push(...blocks)
-          this.cache.set(key, value)
+          await Promise.all(pending)
+          this.cache.set(key, last)
         } else {
-          const value = [op]
-          // This is an odd one.
-          // Arrays with values of undefined end up getting encoded as null
-          // in the browser and not in some Node.js versions. This is easily
-          // fixable below but it can't be tested effectively in Node.js
-          // so we have to disable coverage until we have browser coverage working.
-          // c8 ignore else
-          if (block) value.push(block)
-          this.cache.set(key, value)
+          // Unlikely that we have already staged this
+          await this.store.put(op)
+          this.cache.set(key, op)
         }
       }
     }
+  }
+
+  const __extract = (op, get) => {
+    const decoded = op.decodeUnsafe()
+    if (decoded.set) {
+      return get(decoded.set.val)
+    }
+    return null
   }
 
   const noResolver = localOps => {
@@ -364,7 +366,10 @@ const create = (Block) => {
     const ops = new Map()
 
     for (const [key, [oldOps, newOps]] of staging.entries()) {
-      const accept = () => ops.set(key, [newOps[newOps.length - 1]])
+      const accept = () => {
+        const last = newOps[newOps.length - 1]
+        ops.set(key, [__extract(last, get), last])
+      }
       // ignore keys that only have local history
       if (!newOps.length) continue
       // accept right away if there are no local changes to conflict with
@@ -385,7 +390,7 @@ const create = (Block) => {
         continue
       }
       // there's a conflict, pass it to the resolver
-      ops.set(key, await all(resolver(oldOps, newOps, get)))
+      ops.set(key, resolver(oldOps, newOps, get))
     }
     return ops
   }
@@ -433,21 +438,7 @@ const create = (Block) => {
     const _all = root => since(root).then(ops => Promise.all(ops))
 
     const [oldOps, newOps] = await Promise.all([_all(oldRoot), _all(newRoot)])
-    const ops = await reconcile(oldOps, newOps, get, resolver)
-    const staged = new Map()
-    for (const [key, [op, ...blocks]] of ops.entries()) {
-      const decoded = op.decodeUnsafe()
-      const value = [op]
-      if (decoded.set) {
-        try {
-          value.push(await get(decoded.set.val))
-        } catch (err) {
-          // Should be included in blocks...
-        }
-      }
-      staged.set(key, [...value, ...blocks])
-    }
-    return staged
+    return reconcile(oldOps, newOps, get, resolver)
   }
 
   const emptyHamt = hamt.empty(Block, 'dag-cbor')
