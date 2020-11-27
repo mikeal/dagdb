@@ -77,12 +77,8 @@ describe('test-replication', () => {
     assert(head1.equals(head2))
   })
 
-  async function * remoteWins (_locals, remotes, get) {
-    // TODO: Once we start decoding blocks in resolvers, this will be simplified
-    const last = remotes[remotes.length - 1]
-    const decoded = last.decodeUnsafe()
-    if (decoded.set) { yield get(decoded.set.val) }
-    yield last
+  async function * remoteWins (locals, remotes) {
+    yield remotes[remotes.length - 1] // Last remote op wins
   }
 
   test('remote wins conflict', async () => {
