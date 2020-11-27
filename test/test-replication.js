@@ -77,8 +77,12 @@ describe('test-replication', () => {
     assert(head1.equals(head2))
   })
 
-  async function * remoteWins (_locals, remotes, _get) {
-    yield * remotes
+  async function * remoteWins (_locals, remotes, get) {
+    // TODO: Once we start decoding blocks in resolvers, this will be simplified
+    const last = remotes[remotes.length - 1]
+    const decoded = last.decodeUnsafe()
+    if (decoded.set) { yield get(decoded.set.val) }
+    yield last
   }
 
   test('remote wins conflict', async () => {
@@ -146,11 +150,13 @@ describe('test-replication', () => {
   function createResolver (data) {
     return async function * (_locals, remotes, _get) {
       const block = Block.encoder(data, 'dag-cbor')
+      // Blocks can be yielded as they are created
+      yield block
       const decoded = remotes.pop().decodeUnsafe()
       const key = getKey(decoded)
       const val = await block.cid()
+      // And the op can be yielded at the end
       yield Block.encoder({ set: { key, val } }, 'dag-cbor')
-      yield block
     }
   }
 
