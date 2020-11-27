@@ -53,9 +53,9 @@ const checkfile = async file => {
 const traverse = async function * (cid, get, seen = new Set()) {
   const block = await get(cid)
   yield block
-  seen.add(cid.toString('base64'))
+  seen.add(cid.toString('base32'))
   for (const [, link] of block.reader().links()) {
-    if (seen.has(link.toString('base64'))) continue
+    if (seen.has(link.toString('base32'))) continue
     yield * traverse(link, get, seen)
   }
 }
