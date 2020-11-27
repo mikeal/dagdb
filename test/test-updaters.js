@@ -65,18 +65,18 @@ const addTests = mkopts => {
   openTests(mkopts)
 }
 
-describe('inmem', () => {
+describe('test-inmem', () => {
   updateTests(() => dagdb.create('inmem'))
 })
 
 const rand = () => Math.random().toString()
 
-describe('level memdown', () => {
+describe('test-level-memdown', () => {
   const mkopts = () => ({ leveldown: memdown(rand()) })
   addTests(mkopts)
 })
 
-describe('s3', () => {
+describe('test-s3', () => {
   const mkopts = () => ({ s3: createS3() })
   addTests(mkopts)
 })
